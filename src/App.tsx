@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DepartmentPage from "./pages/DepartmentPage";
 import PositionPage from "./pages/PositionPage";
+import ContractPage from "./pages/ContractPage";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ function App() {
           <Route path="/departments" element={<DepartmentPage />} />
           <Route path="/positions" element={<PositionPage />} />
           <Route path="/users" element={<UserManagementPage />} />
+          <Route path="/contracts" element={<ContractPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

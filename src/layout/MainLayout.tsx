@@ -118,6 +118,11 @@ const MainLayout = () => {
               icon: <UserOutlined />,
               label: "User Management",
             },
+             {
+              key: "contracts",
+              icon: <UserOutlined />,
+              label: "Contracts",
+            },
             {
               key: "settings",
               icon: <SettingOutlined />,

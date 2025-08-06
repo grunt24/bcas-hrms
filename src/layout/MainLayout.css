@@ -138,3 +138,18 @@
     margin-left: 0 !important;
   }
 }
+/* Custom trigger button color */
+.ant-layout-sider-trigger {
+  background: #01582a !important; /* Dark green color */
+  color: white !important;
+}
+
+/* Hover effect for the trigger */
+.ant-layout-sider-trigger:hover {
+  background: #014822 !important; /* Slightly darker green on hover */
+}
+
+/* Icon inside the trigger */
+.ant-layout-sider-trigger .anticon {
+  color: white !important;
+}
