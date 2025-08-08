@@ -72,7 +72,14 @@ const ContractPage: React.FC = () => {
         }));
         
         setEmployees(employeesWithContracts);
-        setDepartments(departmentData);
+        setDepartments(
+          departmentData
+            .filter((d: any) => typeof d.departmentID === 'number')
+            .map((d: any) => ({
+              departmentID: d.departmentID as number,
+              departmentName: d.departmentName
+            }))
+        );
       } catch (error) {
         message.error("Failed to fetch data");
         console.error(error);
@@ -134,7 +141,8 @@ const ContractPage: React.FC = () => {
     message.success("Contract file deleted successfully");
   };
 
-  const getDepartmentName = (departmentId: number) => {
+  const getDepartmentName = (departmentId: number | undefined) => {
+    if (typeof departmentId !== 'number') return 'Unknown';
     const department = departments.find(d => d.departmentID === departmentId);
     return department ? department.departmentName : departmentId;
   };
