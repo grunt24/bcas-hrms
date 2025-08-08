@@ -6,7 +6,8 @@ import {
   SettingOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  FolderOutlined
 } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
@@ -120,7 +121,7 @@ const MainLayout = () => {
             },
              {
               key: "contracts",
-              icon: <UserOutlined />,
+              icon: <FolderOutlined />,
               label: "Contracts",
             },
             {

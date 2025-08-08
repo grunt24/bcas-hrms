@@ -226,13 +226,14 @@ const ContractPage: React.FC = () => {
       title: 'Contract',
       key: 'contract',
       render: (record: EmployeeContract) => (
-        <Space size="middle">
+        <Space size="middle" className="contract-actions">
           <Button
             type="link"
             icon={<UploadOutlined />}
             onClick={() => setEditingEmployee(record)}
+            size="small"
           >
-            Upload
+            <span className="action-text">Upload</span>
           </Button>
           {record.contractFiles.length > 0 && (
             <>
@@ -240,16 +241,18 @@ const ContractPage: React.FC = () => {
                 type="link"
                 icon={<EyeOutlined />}
                 onClick={() => handlePreview(record.contractFiles[0])}
+                size="small"
               >
-                View
+                <span className="action-text">View</span>
               </Button>
               <Button
                 type="link"
                 danger
                 icon={<DeleteOutlined />}
                 onClick={() => handleDelete(record.employeeID!, record.contractFiles[0].uid)}
+                size="small"
               >
-                Delete
+                <span className="action-text">Delete</span>
               </Button>
             </>
           )}
@@ -268,6 +271,8 @@ const ContractPage: React.FC = () => {
         rowKey="employeeID"
         loading={loading}
         pagination={{ pageSize: 10 }}
+        scroll={{ x: true }}
+        className="contract-table"
       />
 
       {/* Upload Modal */}
@@ -289,6 +294,7 @@ const ContractPage: React.FC = () => {
               Upload
             </Button>,
           ]}
+          className="upload-modal"
         >
           <Upload
             listType="picture-card"
@@ -317,10 +323,14 @@ const ContractPage: React.FC = () => {
         title={previewFile?.name || 'Contract File'}
         footer={null}
         onCancel={() => setPreviewOpen(false)}
-        width="80%"
+        width="90%"
         style={{ top: 20 }}
+        wrapClassName="preview-modal"
+        bodyStyle={{ padding: 0 }}
       >
-        {renderFilePreview()}
+        <div style={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
+          {renderFilePreview()}
+        </div>
       </Modal>
     </div>
   );
