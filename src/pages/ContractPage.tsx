@@ -1,207 +1,328 @@
-import React, { useState } from "react";
-import { PlusOutlined, EyeOutlined, DeleteOutlined } from "@ant-design/icons";
-import { Button, Upload, Modal, message, Card, Row, Col } from "antd";
-import type { UploadFile, UploadProps } from "antd";
+import React, { useState, useEffect } from "react";
+import { 
+  EyeOutlined, 
+  DeleteOutlined,
+  UploadOutlined,
+  FileOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileExcelOutlined
+} from "@ant-design/icons";
+import { 
+  Button, 
+  Upload, 
+  Modal, 
+  message, 
+  Table, 
+  Space,
+  Tag,
+  Spin,
+  Image
+} from "antd";
+import type { UploadFile } from "antd";
+import { EmployeeService } from "../api/EmployeeService";
+import DepartmentService from "../api/DepartmentService";
+import { Employee } from "../types/tblEmployees";
+import "./ContractPage.css";
 
-interface UploadedFile extends UploadFile {
-  preview?: string;
-  type?: string;
+interface EmployeeContract extends Employee {
+  contractStatus: 'Active' | 'Expired' | 'Pending';
+  contractFiles: UploadFile[];
 }
 
-const ContractPage: React.FC = () => {
-  const [fileList, setFileList] = useState<UploadedFile[]>([]);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewImage, setPreviewImage] = useState("");
-  const [previewTitle, setPreviewTitle] = useState("");
+interface Department {
+  departmentID: number;
+  departmentName: string;
+}
 
-  // Convert file to base64 for preview
+const getFileIcon = (fileType?: string) => {
+  if (!fileType) return <FileOutlined />;
+  
+  if (fileType.includes('pdf')) return <FilePdfOutlined />;
+  if (fileType.includes('word') || fileType.includes('document')) return <FileWordOutlined />;
+  if (fileType.includes('excel') || fileType.includes('sheet')) return <FileExcelOutlined />;
+  if (fileType.includes('image')) return <FileOutlined />;
+  
+  return <FileOutlined />;
+};
+
+const ContractPage: React.FC = () => {
+  const [employees, setEmployees] = useState<EmployeeContract[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<UploadFile | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeContract | null>(null);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [employeeData, departmentData] = await Promise.all([
+          EmployeeService.getAll(),
+          DepartmentService.getAll()
+        ]);
+        
+        const statuses = ['Active', 'Expired', 'Pending'] as const;
+        const employeesWithContracts = employeeData.map(emp => ({
+          ...emp,
+          contractStatus: statuses[Math.floor(Math.random() * 3)],
+          contractFiles: []
+        }));
+        
+        setEmployees(employeesWithContracts);
+        setDepartments(departmentData);
+      } catch (error) {
+        message.error("Failed to fetch data");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const getBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
+      reader.onerror = error => reject(error);
     });
 
-  // Handle preview
-  const handlePreview = async (file: UploadedFile) => {
-    if (!file.url && !file.preview) {
-      file.preview = await getBase64(file.originFileObj as File);
+  const handlePreview = async (file: UploadFile) => {
+    if (!file.url && !file.preview && file.originFileObj) {
+      try {
+        file.preview = await getBase64(file.originFileObj);
+      } catch (error) {
+        console.error("Error generating preview:", error);
+        message.error("Failed to generate preview");
+        return;
+      }
     }
-    setPreviewImage(file.url || (file.preview as string));
+    setPreviewFile(file);
     setPreviewOpen(true);
-    setPreviewTitle(file.name || file.url!.substring(file.url!.lastIndexOf("/") + 1));
   };
 
-  // Handle file change
-  const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
-    setFileList(newFileList);
-  };
-
-  // Custom upload validation
-  const beforeUpload = (file: File) => {
-    const isValidType = file.type === "image/jpeg" || 
-                       file.type === "image/png" || 
-                       file.type === "application/pdf";
-    
-    if (!isValidType) {
-      message.error("You can only upload JPG, PNG, or PDF files!");
-      return false;
+  const handleUpload = () => {
+    if (editingEmployee && fileList.length > 0) {
+      const updatedEmployees = employees.map(emp => 
+        emp.employeeID === editingEmployee.employeeID 
+          ? { ...emp, contractFiles: [...emp.contractFiles, ...fileList] }
+          : emp
+      );
+      setEmployees(updatedEmployees);
+      message.success("Contract file uploaded successfully");
+      setEditingEmployee(null);
+      setFileList([]);
     }
+  };
 
+  const handleDelete = (employeeId: number, fileUid: string) => {
+    const updatedEmployees = employees.map(emp => {
+      if (emp.employeeID === employeeId) {
+        return {
+          ...emp,
+          contractFiles: emp.contractFiles.filter(file => file.uid !== fileUid)
+        };
+      }
+      return emp;
+    });
+    setEmployees(updatedEmployees);
+    message.success("Contract file deleted successfully");
+  };
+
+  const getDepartmentName = (departmentId: number) => {
+    const department = departments.find(d => d.departmentID === departmentId);
+    return department ? department.departmentName : departmentId;
+  };
+
+  const beforeUpload = (file: File) => {
     const isLt10M = file.size / 1024 / 1024 < 10;
     if (!isLt10M) {
-      message.error("File must be smaller than 10MB!");
-      return false;
+      message.error('File must be smaller than 10MB!');
+      return Upload.LIST_IGNORE;
+    }
+    return false;
+  };
+
+  const renderFilePreview = () => {
+    if (!previewFile) return null;
+
+    const fileType = previewFile.type || '';
+    const fileUrl = previewFile.url || previewFile.preview || '';
+
+    if (fileType.includes('image')) {
+      return (
+        <Image
+          width="100%"
+          src={fileUrl}
+          alt="Contract preview"
+          style={{ maxHeight: '70vh', objectFit: 'contain' }}
+        />
+      );
     }
 
-    return false; // Prevent auto upload, handle manually
-  };
-
-  // Custom request to handle file upload manually
-  const customRequest = ({ file, onSuccess }: any) => {
-    // Simulate upload success
-    setTimeout(() => {
-      onSuccess("ok");
-    }, 0);
-  };
-
-  const uploadButton = (
-    <div>
-      <PlusOutlined />
-      <div style={{ marginTop: 8 }}>Upload Contract</div>
-    </div>
-  );
-
-  // Render file preview card
-  const renderFileCard = (file: UploadedFile) => {
-    const isImage = file.type?.startsWith("image/");
-    const isPDF = file.type === "application/pdf";
+    if (fileType.includes('pdf')) {
+      return (
+        <iframe 
+          src={fileUrl} 
+          width="100%" 
+          height="600px" 
+          style={{ border: 'none' }}
+          title="PDF Preview"
+        />
+      );
+    }
 
     return (
-      <Col xs={24} sm={12} md={8} lg={6} key={file.uid}>
-        <Card
-          hoverable
-          style={{ marginBottom: 16 }}
-          cover={
-            isImage ? (
-              <div style={{ height: 200, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <img
-                  alt={file.name}
-                  src={file.preview || file.url}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-            ) : (
-              <div style={{ 
-                height: 200, 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                backgroundColor: "#f5f5f5",
-                fontSize: "48px",
-                color: "#ff4d4f"
-              }}>
-                📄
-              </div>
-            )
-          }
-          actions={[
-            <EyeOutlined key="preview" onClick={() => handlePreview(file)} />,
-            <DeleteOutlined 
-              key="delete" 
-              onClick={() => {
-                const newFileList = fileList.filter(item => item.uid !== file.uid);
-                setFileList(newFileList);
-              }}
-            />
-          ]}
+      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+        {getFileIcon(fileType)}
+        <p style={{ marginTop: 16 }}>
+          {previewFile.name || 'Contract File'}
+        </p>
+        <Button 
+          type="primary" 
+          onClick={() => window.open(fileUrl, '_blank')}
+          style={{ marginTop: 16 }}
         >
-          <Card.Meta
-            title={file.name}
-            description={`${(file.size! / 1024 / 1024).toFixed(2)} MB`}
-          />
-        </Card>
-      </Col>
+          Download File
+        </Button>
+      </div>
     );
   };
 
+  const columns = [
+    {
+      title: 'Employee',
+      key: 'name',
+      render: (record: Employee) => (
+        <span>{record.firstName} {record.lastName}</span>
+      ),
+    },
+    {
+      title: 'Department',
+      key: 'department',
+      render: (record: Employee) => (
+        <span>{getDepartmentName(record.departmentID)}</span>
+      ),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'contractStatus',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={
+          status === 'Active' ? 'green' : 
+          status === 'Expired' ? 'red' : 'orange'
+        }>
+          {status}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Contract',
+      key: 'contract',
+      render: (record: EmployeeContract) => (
+        <Space size="middle">
+          <Button
+            type="link"
+            icon={<UploadOutlined />}
+            onClick={() => setEditingEmployee(record)}
+          >
+            Upload
+          </Button>
+          {record.contractFiles.length > 0 && (
+            <>
+              <Button
+                type="link"
+                icon={<EyeOutlined />}
+                onClick={() => handlePreview(record.contractFiles[0])}
+              >
+                View
+              </Button>
+              <Button
+                type="link"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleDelete(record.employeeID!, record.contractFiles[0].uid)}
+              >
+                Delete
+              </Button>
+            </>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <>
-      <div style={{ padding: 24, minHeight: 360, background: "#fff" }}>
-        <h2 style={{ marginBottom: 24 }}>Contract Management</h2>
-        
-        {/* Upload Area */}
-        <div style={{ marginBottom: 32 }}>
+    <div className="contract-page">
+      <h2>Employee Contracts</h2>
+      
+      <Table
+        columns={columns}
+        dataSource={employees}
+        rowKey="employeeID"
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+      />
+
+      {/* Upload Modal */}
+      {editingEmployee && (
+        <Modal
+          title={`Upload Contract for ${editingEmployee.firstName} ${editingEmployee.lastName}`}
+          open={true}
+          onCancel={() => setEditingEmployee(null)}
+          footer={[
+            <Button key="cancel" onClick={() => setEditingEmployee(null)}>
+              Cancel
+            </Button>,
+            <Button
+              key="upload"
+              type="primary"
+              onClick={handleUpload}
+              disabled={fileList.length === 0}
+            >
+              Upload
+            </Button>,
+          ]}
+        >
           <Upload
-            customRequest={customRequest}
             listType="picture-card"
             fileList={fileList}
-            onPreview={handlePreview}
-            onChange={handleChange}
             beforeUpload={beforeUpload}
-            accept="image/jpeg,image/png,application/pdf"
-            showUploadList={false}
+            onChange={({ fileList }) => setFileList(fileList)}
+            accept="*/*"
+            maxCount={1}
           >
-            {fileList.length >= 8 ? null : uploadButton}
+            {fileList.length >= 1 ? null : (
+              <div>
+                <UploadOutlined />
+                <div style={{ marginTop: 8 }}>Select File</div>
+              </div>
+            )}
           </Upload>
-          <p style={{ marginTop: 8, color: "#666" }}>
-            Supported formats: JPG, PNG, PDF (Max 10MB per file)
+          <p style={{ marginTop: 8, color: '#666' }}>
+            Supported files: PDF, Word, Excel, Images (Max 10MB)
           </p>
-        </div>
-
-        {/* File Preview Grid */}
-        {fileList.length > 0 && (
-          <div>
-            <h3 style={{ marginBottom: 16 }}>Uploaded Contracts ({fileList.length})</h3>
-            <Row gutter={[16, 16]}>
-              {fileList.map(renderFileCard)}
-            </Row>
-          </div>
-        )}
-
-        {fileList.length === 0 && (
-          <div style={{ 
-            textAlign: "center", 
-            padding: "40px 0", 
-            color: "#999",
-            border: "2px dashed #d9d9d9",
-            borderRadius: "6px"
-          }}>
-            <PlusOutlined style={{ fontSize: "48px", marginBottom: "16px" }} />
-            <p>No contracts uploaded yet</p>
-            <p>Click the upload button above to add your first contract</p>
-          </div>
-        )}
-      </div>
+        </Modal>
+      )}
 
       {/* Preview Modal */}
       <Modal
         open={previewOpen}
-        title={previewTitle}
+        title={previewFile?.name || 'Contract File'}
         footer={null}
         onCancel={() => setPreviewOpen(false)}
-        width={800}
-        centered
+        width="80%"
+        style={{ top: 20 }}
       >
-        {previewImage.includes("data:application/pdf") ? (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div style={{ fontSize: "48px", marginBottom: "16px" }}>📄</div>
-            <p>PDF Preview</p>
-            <p style={{ color: "#666" }}>{previewTitle}</p>
-            <Button type="primary" onClick={() => window.open(previewImage)}>
-              Open PDF in New Tab
-            </Button>
-          </div>
-        ) : (
-          <img
-            alt="preview"
-            style={{ width: "100%" }}
-            src={previewImage}
-          />
-        )}
+        {renderFilePreview()}
       </Modal>
-    </>
+    </div>
   );
 };
 

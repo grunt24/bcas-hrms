@@ -1,0 +1,30 @@
+.contract-status-active {
+  background-color: #f6ffed;
+  border-color: #b7eb8f;
+  color: #52c41a;
+}
+
+.contract-status-expired {
+  background-color: #fff2f0;
+  border-color: #ffccc7;
+  color: #ff4d4f;
+}
+
+.contract-status-pending {
+  background-color: #fffbe6;
+  border-color: #ffe58f;
+  color: #faad14;
+}
+
+.upload-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.contract-table {
+  margin-top: 20px;
+}
+
+.contract-actions {
+  display: flex;
+  gap: 8px;
+}
