@@ -17,7 +17,7 @@ axiosInstance.interceptors.request.use(
         return config
     },
     (error) => {
-        const { message } = error
+        // const { message } = error
         // Toastify.Error(message)
         return Promise.reject(error)
     },
