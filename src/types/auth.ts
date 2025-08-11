@@ -18,3 +18,9 @@ export type LoginTypes = {
   username: string;
   password: string;
 };
+
+export const ROLES = {
+  Admin: 1,
+  Teaching: 2,
+  NonTeaching: 3,
+} as const;

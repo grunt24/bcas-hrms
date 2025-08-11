@@ -34,6 +34,8 @@ import DepartmentService from "../api/DepartmentService";
 import { DepartmentTypes } from "../types/tblDepartment";
 import { PositionTypes } from "../types/tblPosition";
 import PositionService from "../api/PositionService";
+import { useAuth } from "../types/useAuth"; // Fixed import path
+import { ROLES } from "../types/auth";
 
 const { Option } = Select;
 const { useBreakpoint } = Grid;
@@ -55,33 +57,48 @@ const FacultyPage: React.FC = () => {
   const screens = useBreakpoint();
   const [departments, setDepartments] = useState<DepartmentTypes[]>([]);
   const [positions, setPositions] = useState<PositionTypes[]>([]);
-
+  const { user } = useAuth();
+  const isAdmin = user?.roleId === ROLES.Admin;
+ 
+  // Single useEffect to fetch all data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const [employees, depts, pos] = await Promise.all([
+        
+        const [allEmployees, depts, pos] = await Promise.all([
           EmployeeService.getAll(),
           DepartmentService.getAll(),
           PositionService.getAll()
         ]);
+        
+        // Filter employees based on role
+        const employees = isAdmin 
+          ? allEmployees
+          : allEmployees.filter(emp => emp.employeeID === (user?.employeeId || 0));
+        
         setFacultyData(employees);
         setDepartments(depts);
         setPositions(pos);
       } catch (error) {
         setError("Failed to fetch data");
         message.error("Failed to fetch data");
-        console.error(error);
+        console.error("Error fetching faculty data:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [isAdmin, user?.employeeId]);
 
   const handleCreate = () => {
+    if (!isAdmin) {
+      message.warning("You don't have permission to add new faculty members");
+      return;
+    }
+    
     form.resetFields();
     form.setFieldsValue({
       employmentStatus: "Hired",
@@ -93,6 +110,12 @@ const FacultyPage: React.FC = () => {
   };
 
 const handleEdit = (record: Employee) => {
+  // Only admins or the employee themselves can edit
+  if (!isAdmin && record.employeeID !== user?.employeeId) {
+    message.warning("You can only edit your own profile");
+    return;
+  }
+
   form.setFieldsValue({
     employeeID: record.employeeID,
     firstName: record.firstName,
@@ -113,6 +136,11 @@ const handleEdit = (record: Employee) => {
 };
 
   const handleDelete = async (id: number) => {
+    if (!isAdmin) {
+      message.warning("You don't have permission to delete faculty members");
+      return;
+    }
+
     try {
       setLoading(true);
       await EmployeeService.delete(id);
@@ -131,7 +159,7 @@ const handleSubmit = async () => {
     const values = await form.validateFields();
     setLoading(true);
 
-    console.log("Raw form values:", values); // Debug log
+    console.log("Raw form values:", values);
 
     const formattedValues = {
       ...values,
@@ -145,14 +173,14 @@ const handleSubmit = async () => {
       positionID: Number(values.positionID),
     };
 
-    console.log("Formatted values before API call:", formattedValues); // Debug log
+    console.log("Formatted values before API call:", formattedValues);
 
     if (editingId) {
       const updatedEmployee = await EmployeeService.update(
         editingId,
         formattedValues
       );
-      console.log("API response:", updatedEmployee); // Debug log
+      console.log("API response:", updatedEmployee);
       setFacultyData(
         facultyData.map((item) =>
           item.employeeID === editingId ? updatedEmployee : item
@@ -169,7 +197,7 @@ const handleSubmit = async () => {
     setIsModalVisible(false);
     form.resetFields();
   } catch (err) {
-    console.error("Error in handleSubmit:", err); // More detailed error logging
+    console.error("Error in handleSubmit:", err);
     message.error("Operation failed. Please check the form and try again.");
   } finally {
     setLoading(false);
@@ -177,6 +205,11 @@ const handleSubmit = async () => {
 };
 
   const handleAddUserAccount = (record: Employee) => {
+    if (!isAdmin) {
+      message.warning("You don't have permission to create user accounts");
+      return;
+    }
+
     userForm.resetFields();
     setSelectedEmployee(record);
 
@@ -229,13 +262,15 @@ const handleSubmit = async () => {
       >
         View Details
       </Menu.Item>
-      <Menu.Item
-        key="add-user"
-        onClick={() => handleAddUserAccount(record)}
-        icon={<UserOutlined />}
-      >
-        Add User Account
-      </Menu.Item>
+      {isAdmin && (
+        <Menu.Item
+          key="add-user"
+          onClick={() => handleAddUserAccount(record)}
+          icon={<UserOutlined />}
+        >
+          Add User Account
+        </Menu.Item>
+      )}
     </Menu>
   );
 
@@ -317,35 +352,39 @@ const handleSubmit = async () => {
       className: "actions-column",
       render: (_, record) => (
         <Space size="middle" className="actions-space">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(record);
-            }}
-            className="action-button"
-            aria-label="Edit"
-          />
-          <Popconfirm
-            title="Are you sure to delete this faculty member?"
-            onConfirm={(e) => {
-              if (e) e.stopPropagation();
-              handleDelete(record.employeeID!);
-            }}
-            onCancel={(e) => e?.stopPropagation()}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button 
-              type="link" 
-              danger 
-              icon={<DeleteOutlined />} 
+          {(isAdmin || record.employeeID === user?.employeeId) && (
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(record);
+              }}
               className="action-button"
-              aria-label="Delete"
-              onClick={(e) => e.stopPropagation()}
+              aria-label="Edit"
             />
-          </Popconfirm>
+          )}
+          {isAdmin && (
+            <Popconfirm
+              title="Are you sure to delete this faculty member?"
+              onConfirm={(e) => {
+                if (e) e.stopPropagation();
+                handleDelete(record.employeeID!);
+              }}
+              onCancel={(e) => e?.stopPropagation()}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button 
+                type="link" 
+                danger 
+                icon={<DeleteOutlined />} 
+                className="action-button"
+                aria-label="Delete"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Popconfirm>
+          )}
           <Dropdown overlay={renderActionsMenu(record)} trigger={["click"]}>
             <Button 
               type="link" 
@@ -383,15 +422,18 @@ const handleSubmit = async () => {
               enterButton
               size={screens.xs ? "small" : "middle"}
             />
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleCreate}
-              className="add-button"
-              size={screens.xs ? "small" : "middle"}
-            >
-              {screens.sm ? "Add Faculty" : "Add"}
-            </Button>
+            {/* Only show Add Faculty button for Admins */}
+            {isAdmin && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleCreate}
+                className="add-button"
+                size={screens.xs ? "small" : "middle"}
+              >
+                {screens.sm ? "Add Faculty" : "Add"}
+              </Button>
+            )}
           </div>
         }
       >

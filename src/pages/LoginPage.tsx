@@ -1,30 +1,44 @@
-import { Form, Input, Button, Card, Typography, message} from "antd";
+import { Form, Input, Button, Card, Typography, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import authenticationService from "../api/authenticationService";
 import { LoginTypes } from "../types/auth";
+import { useAuth } from "../types/useAuth";
 import "./LoginPage.css"; 
 
 const { Title } = Typography;
 
-const LoginPage = () => {
+const LoginPage: React.FC = () => {
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
 
   const onFinish = async (data: LoginTypes) => {
     try {
-      const response = await authenticationService.login(data)
+      setLoading(true);
+      const response = await authenticationService.login(data);
 
       if (response) {
-        message.success('Login successful!')
-        navigate('/dashboard')
+
+        login(response);
+        
+        message.success('Login successful!');
+        
+        const from = location.state?.from?.pathname || "/dashboard";
+        navigate(from, { replace: true });
       } else {
-        message.error('Invalid username or password.')
+        message.error('Invalid username or password.');
       }
     } catch (error) {
-      console.error('Login failed:', error)
-      message.error('Something went wrong. Please try again.')
+      console.error('Login failed:', error);
+      message.error('Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
   return (
     <div
       style={{
@@ -50,7 +64,7 @@ const LoginPage = () => {
             name="username"
             rules={[{ required: true, message: "Please input your username!" }]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Username"/>
+            <Input prefix={<UserOutlined />} placeholder="Username" />
           </Form.Item>
 
           <Form.Item
@@ -62,7 +76,13 @@ const LoginPage = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block className="login-button">
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              block 
+              loading={loading}
+              className="login-button"
+            >
               Login
             </Button>
           </Form.Item>

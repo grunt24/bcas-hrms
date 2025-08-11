@@ -16,14 +16,18 @@ import {
   Table, 
   Space,
   Tag,
-  Spin,
-  Image
+  Image,
+  Typography
 } from "antd";
 import type { UploadFile } from "antd";
 import { EmployeeService } from "../api/EmployeeService";
 import DepartmentService from "../api/DepartmentService";
 import { Employee } from "../types/tblEmployees";
+import { useAuth } from "../types/useAuth";
+import { ROLES } from "../types/auth";
 import "./ContractPage.css";
+
+const { Text } = Typography;
 
 interface EmployeeContract extends Employee {
   contractStatus: 'Active' | 'Expired' | 'Pending';
@@ -47,6 +51,14 @@ const getFileIcon = (fileType?: string) => {
 };
 
 const ContractPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.roleId === ROLES.Admin;
+  const isTeacher = user?.roleId === ROLES.Teaching;
+  const isNonTeacher = user?.roleId === ROLES.NonTeaching;
+  
+  // Check if user has access to the contract page
+  const hasAccess = isAdmin || isTeacher || isNonTeacher;
+
   const [employees, setEmployees] = useState<EmployeeContract[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,13 +68,32 @@ const ContractPage: React.FC = () => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
+    if (!hasAccess) {
+      message.error("You don't have permission to access this page");
+      return;
+    }
+
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [employeeData, departmentData] = await Promise.all([
+        
+        // Fetch all employees and departments
+        const [allEmployees, departmentData] = await Promise.all([
           EmployeeService.getAll(),
           DepartmentService.getAll()
         ]);
+        
+        let employeeData: Employee[];
+        
+        if (isAdmin) {
+          // Admin gets all employees
+          employeeData = allEmployees;
+        } else if (isTeacher || isNonTeacher) {
+          // Teaching and non-teaching staff get only their own data
+          employeeData = allEmployees.filter(emp => emp.employeeID === user?.employeeId);
+        } else {
+          employeeData = [];
+        }
         
         const statuses = ['Active', 'Expired', 'Pending'] as const;
         const employeesWithContracts = employeeData.map(emp => ({
@@ -89,7 +120,27 @@ const ContractPage: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [hasAccess, isAdmin, isTeacher, isNonTeacher, user?.employeeId]);
+
+  // If user doesn't have access, show access denied message
+  if (!hasAccess) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        height: '50vh',
+        flexDirection: 'column'
+      }}>
+        <Text type="danger" style={{ fontSize: '18px', marginBottom: '16px' }}>
+          Access Denied
+        </Text>
+        <Text type="secondary">
+          You don't have permission to view contract information.
+        </Text>
+      </div>
+    );
+  }
 
   const getBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -128,17 +179,26 @@ const ContractPage: React.FC = () => {
   };
 
   const handleDelete = (employeeId: number, fileUid: string) => {
-    const updatedEmployees = employees.map(emp => {
-      if (emp.employeeID === employeeId) {
-        return {
-          ...emp,
-          contractFiles: emp.contractFiles.filter(file => file.uid !== fileUid)
-        };
+    Modal.confirm({
+      title: 'Delete Contract File',
+      content: 'Are you sure you want to delete this contract file?',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: () => {
+        const updatedEmployees = employees.map(emp => {
+          if (emp.employeeID === employeeId) {
+            return {
+              ...emp,
+              contractFiles: emp.contractFiles.filter(file => file.uid !== fileUid)
+            };
+          }
+          return emp;
+        });
+        setEmployees(updatedEmployees);
+        message.success("Contract file deleted successfully");
       }
-      return emp;
     });
-    setEmployees(updatedEmployees);
-    message.success("Contract file deleted successfully");
   };
 
   const getDepartmentName = (departmentId: number | undefined) => {
@@ -207,14 +267,14 @@ const ContractPage: React.FC = () => {
       title: 'Employee',
       key: 'name',
       render: (record: Employee) => (
-        <span>{record.firstName} {record.lastName}</span>
+        <Text strong>{record.firstName} {record.lastName}</Text>
       ),
     },
     {
       title: 'Department',
       key: 'department',
       render: (record: Employee) => (
-        <span>{getDepartmentName(record.departmentID)}</span>
+        <Text>{getDepartmentName(record.departmentID)}</Text>
       ),
     },
     {
@@ -226,7 +286,7 @@ const ContractPage: React.FC = () => {
           status === 'Active' ? 'green' : 
           status === 'Expired' ? 'red' : 'orange'
         }>
-          {status}
+          {status.toUpperCase()}
         </Tag>
       ),
     },
@@ -235,15 +295,18 @@ const ContractPage: React.FC = () => {
       key: 'contract',
       render: (record: EmployeeContract) => (
         <Space size="middle" className="contract-actions">
-          <Button
-            type="link"
-            icon={<UploadOutlined />}
-            onClick={() => setEditingEmployee(record)}
-            size="small"
-          >
-            <span className="action-text">Upload</span>
-          </Button>
-          {record.contractFiles.length > 0 && (
+          {/* Only admin can upload contracts */}
+          {isAdmin && (
+            <Button
+              type="link"
+              icon={<UploadOutlined />}
+              onClick={() => setEditingEmployee(record)}
+              size="small"
+            >
+              <span className="action-text">Upload</span>
+            </Button>
+          )}
+          {record.contractFiles.length > 0 ? (
             <>
               <Button
                 type="link"
@@ -253,16 +316,21 @@ const ContractPage: React.FC = () => {
               >
                 <span className="action-text">View</span>
               </Button>
-              <Button
-                type="link"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record.employeeID!, record.contractFiles[0].uid)}
-                size="small"
-              >
-                <span className="action-text">Delete</span>
-              </Button>
+              {/* Only admin can delete contracts */}
+              {isAdmin && (
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDelete(record.employeeID!, record.contractFiles[0].uid)}
+                  size="small"
+                >
+                  <span className="action-text">Delete</span>
+                </Button>
+              )}
             </>
+          ) : (
+            <Text type="secondary">No contract</Text>
           )}
         </Space>
       ),
@@ -271,26 +339,54 @@ const ContractPage: React.FC = () => {
 
   return (
     <div className="contract-page">
-      <h2>Employee Contracts</h2>
+      <div style={{ marginBottom: '16px' }}>
+        <h2>
+          {isAdmin ? 'Employee Contracts' : 'My Contract Information'}
+        </h2>
+        <Text type="secondary">
+          {isAdmin 
+            ? `Managing ${employees.length} employee contracts`
+            : 'Your personal contract information'
+          }
+        </Text>
+      </div>
       
       <Table
         columns={columns}
         dataSource={employees}
         rowKey="employeeID"
         loading={loading}
-        pagination={{ pageSize: 10 }}
+        pagination={isAdmin ? { 
+          pageSize: 10,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50']
+        } : false} // No pagination needed for single employee view
         scroll={{ x: true }}
         className="contract-table"
+        locale={{
+          emptyText: isAdmin 
+            ? 'No employee contracts found' 
+            : 'No contract information available for your account'
+        }}
       />
 
-      {/* Upload Modal */}
-      {editingEmployee && (
+      {/* Upload Modal - Only for Admin */}
+      {editingEmployee && isAdmin && (
         <Modal
           title={`Upload Contract for ${editingEmployee.firstName} ${editingEmployee.lastName}`}
           open={true}
-          onCancel={() => setEditingEmployee(null)}
+          onCancel={() => {
+            setEditingEmployee(null);
+            setFileList([]);
+          }}
           footer={[
-            <Button key="cancel" onClick={() => setEditingEmployee(null)}>
+            <Button 
+              key="cancel" 
+              onClick={() => {
+                setEditingEmployee(null);
+                setFileList([]);
+              }}
+            >
               Cancel
             </Button>,
             <Button
@@ -299,7 +395,7 @@ const ContractPage: React.FC = () => {
               onClick={handleUpload}
               disabled={fileList.length === 0}
             >
-              Upload
+              Upload Contract
             </Button>,
           ]}
           className="upload-modal"
