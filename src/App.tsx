@@ -64,7 +64,7 @@ function App() {
           <Route 
             path="/contracts" 
             element={
-              <ProtectedRoute allowedRoles={[ROLES.Admin]}>
+              <ProtectedRoute allowedRoles={[ROLES.Admin, ROLES.Teaching, ROLES.NonTeaching]}>
                 <ContractPage />
               </ProtectedRoute>
             } 
