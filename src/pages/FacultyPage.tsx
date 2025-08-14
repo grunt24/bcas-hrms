@@ -176,16 +176,31 @@ const handleSubmit = async () => {
     console.log("Formatted values before API call:", formattedValues);
 
     if (editingId) {
-      const updatedEmployee = await EmployeeService.update(
-        editingId,
-        formattedValues
-      );
-      console.log("API response:", updatedEmployee);
-      setFacultyData(
-        facultyData.map((item) =>
-          item.employeeID === editingId ? updatedEmployee : item
-        )
-      );
+      // If not admin and editing own profile, exclude hireDate from update
+      if (!isAdmin && selectedEmployee?.employeeID === user?.employeeId) {
+        const { hireDate, ...valuesWithoutHireDate } = formattedValues;
+        const updatedEmployee = await EmployeeService.update(
+          editingId,
+          valuesWithoutHireDate
+        );
+        console.log("API response (without hire date):", updatedEmployee);
+        setFacultyData(
+          facultyData.map((item) =>
+            item.employeeID === editingId ? updatedEmployee : item
+          )
+        );
+      } else {
+        const updatedEmployee = await EmployeeService.update(
+          editingId,
+          formattedValues
+        );
+        console.log("API response:", updatedEmployee);
+        setFacultyData(
+          facultyData.map((item) =>
+            item.employeeID === editingId ? updatedEmployee : item
+          )
+        );
+      }
       message.success("Faculty updated successfully");
     } else {
       const { employeeID, ...employeeDataWithoutId } = formattedValues;
@@ -609,7 +624,7 @@ const handleSubmit = async () => {
                 initialValue="Hired"
                 className="form-item"
               >
-                <Select>
+                <Select disabled={!isAdmin}>
                   <Option value="Hired">Hired</Option>
                   <Option value="Probation">Probation</Option>
                   <Option value="Terminated">Terminated</Option>
@@ -623,7 +638,10 @@ const handleSubmit = async () => {
                 initialValue={moment()}
                 className="form-item"
               >
-                <DatePicker style={{ width: "100%" }} />
+                <DatePicker 
+                  style={{ width: "100%" }} 
+                  disabled={!isAdmin}
+                />
               </Form.Item>
             </div>
           </Form>
@@ -674,9 +692,9 @@ const handleSubmit = async () => {
             rules={[{ required: true, message: "Please select role!" }]}
           >
             <Select>
-              <Option value={1}>Administrator</Option>
+              <Option value={1}>Admin</Option>
               <Option value={2}>Teacher</Option>
-              <Option value={3}>Staff</Option>
+              <Option value={3}>Non-Teacher</Option>
             </Select>
           </Form.Item>
         </Form>
