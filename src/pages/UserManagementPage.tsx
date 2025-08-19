@@ -27,6 +27,8 @@ const UserManagementPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
+  const [modalKey, setModalKey] = useState<string>(''); // Add this for forcing re-render
 
   const roles: Role[] = [
     { roleId: 1, roleName: "Admin" },
@@ -54,30 +56,65 @@ const UserManagementPage: React.FC = () => {
     fetchUserData();
   }, []);
 
+  // Force form population after modal opens
+  useEffect(() => {
+    if (isModalVisible) {
+      // Use setTimeout to ensure modal is fully rendered
+      const timer = setTimeout(() => {
+        if (selectedUser && editingId) {
+          console.log('Setting form values for edit:', selectedUser);
+          form.setFieldsValue({
+            userId: selectedUser.userId,
+            employeeId: selectedUser.employeeId,
+            roleId: selectedUser.roleId,
+            username: selectedUser.userName,
+            isActive: selectedUser.isActive,
+          });
+          
+          // Force form to update
+          form.validateFields().catch(() => {
+            // Ignore validation errors, we just want to trigger form update
+          });
+        } else if (!editingId) {
+          console.log('Resetting form for add mode');
+          form.resetFields();
+        }
+      }, 100); // Small delay to ensure modal is rendered
+
+      return () => clearTimeout(timer);
+    }
+  }, [isModalVisible, selectedUser, editingId, form]);
+
   const handleAddUser = () => {
+    console.log('Add user clicked');
     form.resetFields();
     setEditingId(null);
+    setSelectedUser(null);
+    setModalKey(`add-${Date.now()}`); // Generate unique key
     setIsModalVisible(true);
   };
 
   const handleEdit = (record: UserListItem) => {
-    // Use the exact same field names as in the API response
-    form.setFieldsValue({
-      userId: record.userId,
-      employeeId: record.employeeId,
-      roleId: record.roleId,
-      username: record.userName, // Map userName from API to username in form
-      isActive: record.isActive,
-    });
-    setEditingId(record.userId);
-    setIsModalVisible(true);
+    console.log('Edit user clicked:', record);
+    
+    // First, close modal if it's open
+    if (isModalVisible) {
+      setIsModalVisible(false);
+    }
+    
+    // Use setTimeout to ensure modal is closed before reopening
+    setTimeout(() => {
+      setSelectedUser(record);
+      setEditingId(record.userId);
+      setModalKey(`edit-${record.userId}-${Date.now()}`); // Generate unique key
+      setIsModalVisible(true);
+    }, 50);
   };
 
   const handleDelete = async (id: number) => {
     try {
       setLoading(true);
       await UserService.delete(id);
-      // Refresh the data after successful delete
       await fetchUserData();
       message.success("User deleted successfully");
     } catch (err: any) {
@@ -92,35 +129,31 @@ const UserManagementPage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      console.log('Form values on submit:', values);
       setLoading(true);
 
       if (editingId) {
-        // For update, send only the changed values
         const updateData = {
           ...values,
-          userName: values.username, // Map form username to API userName
+          userName: values.username,
         };
-        delete updateData.username; // Remove the form field name
+        delete updateData.username;
 
         await UserService.update(editingId, updateData);
         message.success("User updated successfully");
       } else {
-        // For create, use the form values directly
         const createData = {
           ...values,
-          userName: values.username, // Map form username to API userName
+          userName: values.username,
         };
-        delete createData.username; // Remove the form field name
+        delete createData.username;
 
         await UserService.create(createData);
         message.success("User created successfully");
       }
 
-      // Refresh data after successful operation
       await fetchUserData();
-      setIsModalVisible(false);
-      form.resetFields();
-      setEditingId(null);
+      handleModalCancel();
     } catch (err: any) {
       const errorMsg = err?.response?.data?.message || 
                       err?.message || 
@@ -130,6 +163,15 @@ const UserManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleModalCancel = () => {
+    console.log('Modal cancelled');
+    setIsModalVisible(false);
+    form.resetFields();
+    setEditingId(null);
+    setSelectedUser(null);
+    setModalKey('');
   };
 
   const filteredData = userData.filter((record) =>
@@ -265,22 +307,31 @@ const UserManagementPage: React.FC = () => {
       />
 
       <Modal
+        key={modalKey} // Force re-render with unique key
         title={editingId ? "Edit User" : "Add New User"}
         open={isModalVisible}
         onOk={handleSubmit}
-        onCancel={() => {
-          setIsModalVisible(false);
-          form.resetFields();
-          setEditingId(null);
-        }}
+        onCancel={handleModalCancel}
         confirmLoading={loading}
         width={500}
         maskClosable={false}
+        destroyOnClose={true} // Destroy form when modal closes
+        forceRender={false} // Don't force render
       >
         <Form 
           form={form} 
           layout="vertical"
           preserve={false}
+          key={`form-${modalKey}`} // Force form re-render too
+          initialValues={
+            editingId && selectedUser ? {
+              userId: selectedUser.userId,
+              employeeId: selectedUser.employeeId,
+              roleId: selectedUser.roleId,
+              username: selectedUser.userName,
+              isActive: selectedUser.isActive,
+            } : {}
+          } // Set initial values directly on form
         >
           <Form.Item name="userId" hidden>
             <Input />

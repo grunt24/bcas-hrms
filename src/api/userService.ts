@@ -48,8 +48,38 @@ const UserService = {
     try {
       const response = await axios.delete(`${API_URL}/Users/${userId}`);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error deleting user ${userId}:`, error);
+      
+      // Enhanced error handling for foreign key constraints
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.message || error.response?.data || 'Cannot delete user due to database constraints';
+        throw new Error(errorMessage);
+      }
+      
+      throw error;
+    }
+  },
+  
+
+  // New method to check if user can be deleted
+  checkCanDelete: async (userId: number): Promise<boolean> => {
+    try {
+      const response = await axios.get(`${API_URL}/Users/${userId}/can-delete`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error checking if user ${userId} can be deleted:`, error);
+      return false;
+    }
+  },
+
+  // New method to get users by employee ID
+  getByEmployeeId: async (employeeId: number): Promise<any[]> => {
+    try {
+      const allUsers = await UserService.getAll();
+      return allUsers.filter(user => user.employeeId === employeeId);
+    } catch (error) {
+      console.error(`Error fetching users for employee ${employeeId}:`, error);
       throw error;
     }
   },
@@ -64,5 +94,6 @@ const UserService = {
     }
   }
 };
+
 
 export default UserService;

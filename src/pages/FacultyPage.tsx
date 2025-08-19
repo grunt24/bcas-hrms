@@ -14,15 +14,12 @@ import {
   DatePicker,
   Grid,
   Tabs,
-  Dropdown,
-  Menu
 } from "antd";
 import { 
   PlusOutlined, 
   DeleteOutlined, 
   EditOutlined,
   UserOutlined,
-  EllipsisOutlined
 } from "@ant-design/icons";
 import { EmployeeService } from "../api/EmployeeService";
 import { Employee } from "../types/tblEmployees";
@@ -106,6 +103,7 @@ const FacultyPage: React.FC = () => {
       gender: "Male",
     });
     setEditingId(null);
+    setSelectedEmployee(null); // Clear selected employee for new creation
     setIsModalVisible(true);
   };
 
@@ -211,6 +209,7 @@ const handleSubmit = async () => {
 
     setIsModalVisible(false);
     form.resetFields();
+    setSelectedEmployee(null); // Clear selected employee after submit
   } catch (err) {
     console.error("Error in handleSubmit:", err);
     message.error("Operation failed. Please check the form and try again.");
@@ -219,7 +218,11 @@ const handleSubmit = async () => {
   }
 };
 
-  const handleAddUserAccount = (record: Employee) => {
+  const handleAddUserAccount = (record: Employee, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation(); // Prevent row click event
+    }
+    
     if (!isAdmin) {
       message.warning("You don't have permission to create user accounts");
       return;
@@ -238,7 +241,7 @@ const handleSubmit = async () => {
       positions: positions.find(p => p.positionID === record.positionID)?.positionName || 3,
     });
 
-    setIsUserModalVisible(true);
+    setIsUserModalVisible(true); // Open USER modal, not employee modal
   };
 
   const handleSubmitUserAccount = async () => {
@@ -249,6 +252,8 @@ const handleSubmit = async () => {
       await UserService.createUserForEmployee(values);
       message.success("User account created successfully");
       setIsUserModalVisible(false);
+      userForm.resetFields();
+      setSelectedEmployee(null);
     } catch (err: any) {
       message.error(err.message || "Failed to create user account");
       console.error(err);
@@ -266,27 +271,6 @@ const handleSubmit = async () => {
     Object.values(record).some((value) =>
       value?.toString().toLowerCase().includes(searchText.toLowerCase())
     )
-  );
-
-  const renderActionsMenu = (record: Employee) => (
-    <Menu>
-      <Menu.Item
-        key="view"
-        onClick={() => handleViewDetails(record)}
-        icon={<UserOutlined />}
-      >
-        View Details
-      </Menu.Item>
-      {isAdmin && (
-        <Menu.Item
-          key="add-user"
-          onClick={() => handleAddUserAccount(record)}
-          icon={<UserOutlined />}
-        >
-          Add User Account
-        </Menu.Item>
-      )}
-    </Menu>
   );
 
   const columns: ColumnsType<Employee> = [
@@ -380,35 +364,36 @@ const handleSubmit = async () => {
             />
           )}
           {isAdmin && (
-            <Popconfirm
-              title="Are you sure to delete this faculty member?"
-              onConfirm={(e) => {
-                if (e) e.stopPropagation();
-                handleDelete(record.employeeID!);
-              }}
-              onCancel={(e) => e?.stopPropagation()}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button 
-                type="link" 
-                danger 
-                icon={<DeleteOutlined />} 
+            <>
+              <Button
+                type="link"
+                icon={<UserOutlined />}
+                onClick={(e) => handleAddUserAccount(record, e)}
                 className="action-button"
-                aria-label="Delete"
-                onClick={(e) => e.stopPropagation()}
+                aria-label="Add User Account"
+                title="Add User Account"
               />
-            </Popconfirm>
+              <Popconfirm
+                title="Are you sure to delete this faculty member?"
+                onConfirm={(e) => {
+                  if (e) e.stopPropagation();
+                  handleDelete(record.employeeID!);
+                }}
+                onCancel={(e) => e?.stopPropagation()}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button 
+                  type="link" 
+                  danger 
+                  icon={<DeleteOutlined />} 
+                  className="action-button"
+                  aria-label="Delete"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </Popconfirm>
+            </>
           )}
-          <Dropdown overlay={renderActionsMenu(record)} trigger={["click"]}>
-            <Button 
-              type="link" 
-              icon={<EllipsisOutlined />} 
-              className="action-button"
-              aria-label="More"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </Dropdown>
         </Space>
       ),
     },
@@ -478,9 +463,17 @@ const handleSubmit = async () => {
       <Modal
         title={editingId ? `Edit Info: ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}` : "Add New Faculty Member"}
         visible={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setSelectedEmployee(null);
+          form.resetFields();
+        }}
         footer={[
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+          <Button key="cancel" onClick={() => {
+            setIsModalVisible(false);
+            setSelectedEmployee(null);
+            form.resetFields();
+          }}>
             Cancel
           </Button>,
           <Button
@@ -653,7 +646,11 @@ const handleSubmit = async () => {
         title="Create User Account"
         visible={isUserModalVisible}
         onOk={handleSubmitUserAccount}
-        onCancel={() => setIsUserModalVisible(false)}
+        onCancel={() => {
+          setIsUserModalVisible(false);
+          setSelectedEmployee(null);
+          userForm.resetFields();
+        }}
         confirmLoading={loading}
         width={screens.xs ? "90%" : "520px"}
       >
