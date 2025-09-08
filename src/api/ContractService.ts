@@ -1,8 +1,7 @@
-// api/ContractService.ts
 import axios from 'axios';
 import { Contract } from '../types/tblContracts';
 
-const API_URL = process.env.REACT_APP_API_URL + '/api/contracts';
+const API_URL = "https://localhost:7245/api/Contracts";
 
 export const ContractService = {
   async getByEmployeeId(employeeId: number): Promise<Contract[]> {
@@ -10,8 +9,13 @@ export const ContractService = {
     return response.data;
   },
 
+  async getById(contractId: number): Promise<Contract> {
+    const response = await axios.get(`${API_URL}/${contractId}`);
+    return response.data;
+  },
+
   async upload(
-    _employeeId: number, 
+    employeeId: number, 
     file: File, 
     contractData: {
       contractType: string;
@@ -22,12 +26,47 @@ export const ContractService = {
   ): Promise<Contract> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('employeeID', employeeId.toString());
     formData.append('contractType', contractData.contractType);
     formData.append('contractStartDate', contractData.contractStartDate);
     formData.append('contractEndDate', contractData.contractEndDate);
     formData.append('lastUpdatedBy', contractData.lastUpdatedBy.toString());
 
     const response = await axios.post(API_URL, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async update(
+    contractId: number,
+    contractData: {
+      contractType?: string;
+      contractStartDate?: string;
+      contractEndDate?: string;
+      lastUpdatedBy: number;
+      file?: File;
+    }
+  ): Promise<Contract> {
+    const formData = new FormData();
+    
+    if (contractData.contractType) {
+      formData.append('contractType', contractData.contractType);
+    }
+    if (contractData.contractStartDate) {
+      formData.append('contractStartDate', contractData.contractStartDate);
+    }
+    if (contractData.contractEndDate) {
+      formData.append('contractEndDate', contractData.contractEndDate);
+    }
+    if (contractData.file) {
+      formData.append('file', contractData.file);
+    }
+    formData.append('lastUpdatedBy', contractData.lastUpdatedBy.toString());
+
+    const response = await axios.put(`${API_URL}/${contractId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -42,14 +81,9 @@ export const ContractService = {
     return response.data;
   },
 
-  async delete(contractId: number): Promise<void> {
-    await axios.delete(`${API_URL}/${contractId}`);
-  },
-
-  async updateStatus(contractId: number, status: string): Promise<Contract> {
-    const response = await axios.patch(`${API_URL}/${contractId}/status`, { status });
-    return response.data;
-  },
+  delete: async (id: number) => {
+  return axios.delete(`Contracts/${id}`);
+},
 };
 
 export default ContractService;
