@@ -10,6 +10,7 @@ import SettingsPage from "./pages/SettingsPage";
 import DepartmentPage from "./pages/DepartmentPage";
 import PositionPage from "./pages/PositionPage";
 import ContractPage from "./pages/ContractPage";
+import EvaluationPage from "./pages/EvaluationPage.tsx";
 import ProtectedRoute from "./context/ProtectedRoute.tsx";
 import { ROLES } from "./types/auth";
 
@@ -69,6 +70,16 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          <Route 
+            path="/evaluations" 
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.Admin]}>
+                <EvaluationPage />
+              </ProtectedRoute>
+            } 
+          />
+
           <Route 
             path="/settings" 
             element={

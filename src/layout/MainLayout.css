@@ -14,7 +14,11 @@
 
 /* Custom theme color - Green for entire sidebar */
 .ant-layout-sider {
+  position: sticky;
+  top: 0;
   background-color: #00883e !important;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .ant-menu-dark, 
@@ -30,7 +34,6 @@
   background-color: #007a38 !important;
 }
 
-/* Remove any dark blue styles */
 .ant-menu-dark .ant-menu-item-divider {
   background-color: rgba(0, 0, 0, 0.06);
 }

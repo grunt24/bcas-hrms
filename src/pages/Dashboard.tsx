@@ -21,11 +21,11 @@ import {
   BellOutlined,
   CalendarOutlined,
   FileTextOutlined,
-  SafetyCertificateOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
 import { EmployeeService } from "../api/EmployeeService"; 
-import { Employee } from "../types/tblEmployees";
+import { ContractService } from "../api/ContractService";
+import { EmployeeWithContracts } from "../types/tblContracts";
 import { PositionTypes } from "../types/tblPosition";
 import { DepartmentTypes } from "../types/tblDepartment";
 import moment from "moment"; 
@@ -38,11 +38,11 @@ import "./Dashboard.css";
 const { Title, Text } = Typography;
 
 const Dashboard: React.FC = () => {
-  const [employeeData, setEmployeeData] = useState<Employee[]>([]);
+  const [employeeData, setEmployeeData] = useState<EmployeeWithContracts[]>([]);
   const [positions, setPositions] = useState<PositionTypes[]>([]);
   const [departments, setDepartments] = useState<DepartmentTypes[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<EmployeeWithContracts | null>(null);
   
   const { user } = useAuth();
   const isAdmin = user?.roleId === ROLES.Admin;
@@ -60,13 +60,36 @@ const Dashboard: React.FC = () => {
         DepartmentService.getAll()
       ]);
       
-      setEmployeeData(employees);
+      // Fetch contract data for all employees
+      const employeesWithContracts = await Promise.all(
+        employees.map(async (emp) => {
+          try {
+            const employeeContracts = await ContractService.getByEmployeeId(emp.employeeID!);
+            
+            const employeeWithContracts: EmployeeWithContracts = {
+              ...emp,
+              contracts: employeeContracts,
+              contractStatus: ""
+            };
+            
+            return employeeWithContracts;
+          } catch (error) {
+            console.error(`Failed to fetch contracts for employee ${emp.employeeID}:`, error);
+            return {
+              ...emp,
+              contracts: [],
+            } as unknown as EmployeeWithContracts;
+          }
+        })
+      );
+      
+      setEmployeeData(employeesWithContracts);
       setPositions(positionsData);
       setDepartments(departmentsData);
       
       // Find current employee data for non-admin users
       if (!isAdmin && user?.employeeId) {
-        const currentEmp = employees.find(emp => emp.employeeID === user.employeeId);
+        const currentEmp = employeesWithContracts.find(emp => emp.employeeID === user.employeeId);
         setCurrentEmployee(currentEmp || null);
         console.log('Current employee found:', currentEmp); // Debug log
       }
@@ -100,17 +123,24 @@ const Dashboard: React.FC = () => {
 
   const adminNotifications = employeeData
     .filter((employee) => {
-      if (!employee.hireDate) return false;
-      const hireDate = moment(employee.hireDate);
-      const contractEndDate = hireDate.clone().add(1, 'year');
+      if (!employee.contracts || employee.contracts.length === 0) return false;
+      
+      // Get the latest contract
+      const latestContract = employee.contracts[employee.contracts.length - 1];
+      if (!latestContract.contractEndDate) return false;
+      
+      const contractEndDate = moment(latestContract.contractEndDate);
       return contractEndDate.isAfter(moment()) && 
              contractEndDate.diff(moment(), "days") <= 30;
     })
-    .map((employee) => ({
-      title: `${employee.firstName} ${employee.lastName}'s contract ends soon`,
-      description: `Position: ${getPositionName(employee.positionID)}`,
-      date: moment(employee.hireDate).clone().add(1, 'year').format("MMMM D, YYYY"),
-    }));
+    .map((employee) => {
+      const latestContract = employee.contracts[employee.contracts.length - 1];
+      return {
+        title: `${employee.firstName} ${employee.lastName}'s contract ends soon`,
+        description: `Position: ${getPositionName(employee.positionID)}`,
+        date: moment(latestContract.contractEndDate).format("MMMM D, YYYY"),
+      };
+    });
 
   // Employee Dashboard Data
   const getEmployeeStats = () => {
@@ -122,20 +152,40 @@ const Dashboard: React.FC = () => {
         position: 'Unknown',
         hireDate: 'Unknown',
         employeeName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Employee',
+        contractType: 'Unknown',
       };
     }
 
+    // Use contract data instead of hire date calculation
+    const latestContract = currentEmployee.contracts && currentEmployee.contracts.length > 0 
+      ? currentEmployee.contracts[currentEmployee.contracts.length - 1] 
+      : null;
+    
+    let contractStatus = 'Unknown';
+    let daysUntilContractEnd = 0;
+    let contractType = 'Unknown';
+    
+    if (latestContract) {
+      if (latestContract.contractEndDate) {
+        const contractEndDate = moment(latestContract.contractEndDate);
+        daysUntilContractEnd = contractEndDate.diff(moment(), 'days');
+        contractStatus = daysUntilContractEnd > 0 ? 'Active' : 'Expired';
+      }
+      if (latestContract.contractType) {
+        contractType = latestContract.contractType;
+      }
+    }
+
     const hireDate = moment(currentEmployee.hireDate);
-    const contractEndDate = hireDate.clone().add(1, 'year');
-    const daysUntilContractEnd = contractEndDate.diff(moment(), 'days');
 
     return {
-      contractStatus: daysUntilContractEnd > 0 ? 'Active' : 'Expired',
+      contractStatus,
       daysUntilContractEnd: Math.max(0, daysUntilContractEnd),
       department: getDepartmentName(currentEmployee.departmentID),
       position: getPositionName(currentEmployee.positionID),
       hireDate: hireDate.format('MMMM D, YYYY'),
       employeeName: `${currentEmployee.firstName} ${currentEmployee.lastName}`,
+      contractType,
     };
   };
 
@@ -260,17 +310,22 @@ const Dashboard: React.FC = () => {
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} sm={12} md={8}>
           <Card className="dashboard-stat-card">
-            <Statistic
-              title="Contract Status"
-              value=""
-              prefix={<SafetyCertificateOutlined />}
-            />
-            <Tag 
-              color={employeeStats.contractStatus === 'Active' ? 'green' : 'red'}
-              style={{ marginTop: 8 }}
-            >
-              {employeeStats.contractStatus}
-            </Tag>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#8c8c8c', fontSize: '14px', marginBottom: '16px' }}>
+                Contract Type
+              </div>
+              <Tag 
+                color={employeeStats.contractType === 'Permanent' ? 'green' : 
+                       employeeStats.contractType === 'Regular' ? 'blue' :
+                       employeeStats.contractType === 'Contractual' ? 'orange' :
+                       employeeStats.contractType === 'Probationary' ? 'yellow' :
+                       employeeStats.contractType === 'Temporary' ? 'red' :
+                       employeeStats.contractType === 'Part-Time' ? 'purple' : 'default'}
+                style={{ fontSize: '14px', padding: '4px 8px' }}
+              >
+                {employeeStats.contractType}
+              </Tag>
+            </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
@@ -341,7 +396,7 @@ const Dashboard: React.FC = () => {
         <Col span={24}>
           <Card title="Quick Actions" className="quick-actions-card">
             <Row gutter={[16, 16]}>
-              <Col xs={24} sm={8}>
+              <Col xs={24} sm={12}>
                 <Button 
                   type="default"
                   size="large"
@@ -353,7 +408,7 @@ const Dashboard: React.FC = () => {
                   <div>View My Profile</div>
                 </Button>
               </Col>
-              <Col xs={24} sm={8}>
+              <Col xs={24} sm={12}>
                 <Button 
                   type="default"
                   size="large"
@@ -363,19 +418,6 @@ const Dashboard: React.FC = () => {
                   style={{ height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <div>View My Contract</div>
-                </Button>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Button 
-                  type="default"
-                  size="large"
-                  block
-                  icon={<BellOutlined />}
-                  disabled
-                  style={{ height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}
-                >
-                  <div>Leave Requests</div>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>Coming Soon</Text>
                 </Button>
               </Col>
             </Row>

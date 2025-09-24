@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   Form,
@@ -14,12 +14,16 @@ import {
   DatePicker,
   Grid,
   Tabs,
+  Dropdown,
+  Menu,
 } from "antd";
 import { 
   PlusOutlined, 
   DeleteOutlined, 
   EditOutlined,
   UserOutlined,
+  PrinterOutlined,
+  FileExcelOutlined,
 } from "@ant-design/icons";
 import { EmployeeService } from "../api/EmployeeService";
 import { Employee } from "../types/tblEmployees";
@@ -31,12 +35,59 @@ import DepartmentService from "../api/DepartmentService";
 import { DepartmentTypes } from "../types/tblDepartment";
 import { PositionTypes } from "../types/tblPosition";
 import PositionService from "../api/PositionService";
-import { useAuth } from "../types/useAuth"; // Fixed import path
+import { useAuth } from "../types/useAuth";
 import { ROLES } from "../types/auth";
 
 const { Option } = Select;
 const { useBreakpoint } = Grid;
 const { TabPane } = Tabs;
+
+// Excel export utility functions
+const exportToExcel = (data: any[], filename: string, category?: string) => {
+  // Create CSV content
+  const headers = [
+    'Employee ID',
+    'First Name',
+    'Last Name',
+    'Gender',
+    'Date of Birth',
+    'Email',
+    'Phone Number',
+    'Address',
+    'Department',
+    'Position',
+    'Employment Status',
+    'Hire Date'
+  ].join(',');
+
+  const rows = data.map(employee => [
+    `"${employee.formattedId}"`,
+    `"${employee.firstName || ''}"`,
+    `"${employee.lastName || ''}"`,
+    `"${employee.gender || ''}"`,
+    `"${employee.dateOfBirth ? moment(employee.dateOfBirth).format('YYYY-MM-DD') : ''}"`,
+    `"${employee.email || ''}"`,
+    `"${employee.phoneNumber || ''}"`,
+    `"${employee.address || ''}"`,
+    `"${employee.departmentName || ''}"`,
+    `"${employee.positionName || ''}"`,
+    `"${employee.employmentStatus || ''}"`,
+    `"${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}"`
+  ].join(','));
+
+  const csvContent = [headers, ...rows].join('\n');
+
+  // Create and download file
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}${category ? `_${category}` : ''}_${moment().format('YYYY-MM-DD')}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 const FacultyPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -56,8 +107,272 @@ const FacultyPage: React.FC = () => {
   const [positions, setPositions] = useState<PositionTypes[]>([]);
   const { user } = useAuth();
   const isAdmin = user?.roleId === ROLES.Admin;
- 
-  // Single useEffect to fetch all data
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const formatEmployeeId = (employeeId: number | string | undefined, hireDate?: string | Date): string => {
+    if (!employeeId) return 'N/A';
+    
+    if (typeof employeeId === 'string' && employeeId.includes('-')) {
+      return employeeId;
+    }
+    
+    const idNumber = typeof employeeId === 'string' ? parseInt(employeeId) : employeeId;
+    
+    let year: number;
+    if (hireDate) {
+      year = moment(hireDate).year();
+    } else {
+      year = new Date().getFullYear();
+    }
+    
+    const formattedId = idNumber.toString().padStart(3, '0');
+    return `${year}-${formattedId}`;
+  };
+
+  // Enhanced faculty data with formatted information
+  const getEnhancedFacultyData = () => {
+    return facultyData.map(employee => ({
+      ...employee,
+      formattedId: formatEmployeeId(employee.employeeID, employee.hireDate),
+      departmentName: departments.find(d => d.departmentID === employee.departmentID)?.departmentName || 'N/A',
+      positionName: positions.find(p => p.positionID === employee.positionID)?.positionName || 'N/A',
+      gender: employee.gender || 'N/A'
+    }));
+  };
+  
+
+  // Print functionality
+  const handlePrint = (category?: string, categoryValue?: string) => {
+    const enhancedData = getEnhancedFacultyData();
+    let dataToPrint = enhancedData;
+    let title = "Faculty Members";
+
+    if (category && categoryValue) {
+      dataToPrint = enhancedData.filter(employee => 
+        employee[category as keyof typeof employee]?.toString() === categoryValue
+      );
+      title = `Faculty Members - ${categoryValue}`;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      message.error('Popup blocked! Please allow popups for printing.');
+      return;
+    }
+
+    const tableHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .print-header { text-align: center; margin-bottom: 20px; }
+          .print-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+          .print-date { font-size: 14px; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; font-weight: bold; }
+          tr:nth-child(even) { background-color: #f9f9f9; }
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <div class="print-title">${title}</div>
+          <div class="print-date">Generated on: ${moment().format('MMMM D, YYYY h:mm A')}</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Gender</th>
+              <th>Email</th>
+              <th>Department</th>
+              <th>Position</th>
+              <th>Status</th>
+              <th>Hire Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dataToPrint.map(employee => `
+              <tr>
+                <td>${employee.formattedId}</td>
+                <td>${employee.firstName || ''}</td>
+                <td>${employee.lastName || ''}</td>
+                <td>${employee.gender || ''}</td>
+                <td>${employee.email || ''}</td>
+                <td>${employee.departmentName}</td>
+                <td>${employee.positionName}</td>
+                <td>${employee.employmentStatus || ''}</td>
+                <td>${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(tableHtml);
+    printWindow.document.close();
+  };
+
+  // Export to Excel functionality
+  const handleExportToExcel = (category?: string, categoryValue?: string) => {
+    const enhancedData = getEnhancedFacultyData();
+    let dataToExport = enhancedData;
+    let filename = "Faculty_Members";
+
+    if (category && categoryValue) {
+      dataToExport = enhancedData.filter(employee => 
+        employee[category as keyof typeof employee]?.toString() === categoryValue
+      );
+      filename = `Faculty_Members_${categoryValue.replace(/\s+/g, '_')}`;
+    }
+
+    exportToExcel(dataToExport, filename, categoryValue);
+    message.success(`Data exported successfully!`);
+  };
+
+  // Get unique values for categories
+  // Get unique values for categories
+const getUniqueCategories = () => {
+  const enhancedData = getEnhancedFacultyData();
+
+  const positions = [...new Set(enhancedData.map(e => e.positionName))].filter(Boolean);
+  const departments = [...new Set(enhancedData.map(e => e.departmentName))].filter(Boolean);
+  const employmentStatuses = [...new Set(enhancedData.map(e => e.employmentStatus))].filter(Boolean);
+  const genders = [...new Set(enhancedData.map(e => e.gender))].filter(Boolean);
+  
+
+
+  return { positions, departments, employmentStatuses, genders };
+};
+
+const {
+  positions: uniquePositions,
+  departments: uniqueDepartments,
+  employmentStatuses: uniqueStatuses,
+  genders: uniqueGenders
+} = getUniqueCategories();
+
+  // Dropdown menu for export options
+const exportMenu = (
+  <Menu>
+    <Menu.SubMenu key="position" title="Export by Position">
+      {uniquePositions.map(position => (
+        <Menu.Item 
+          key={`pos-${position}`}
+          onClick={() => handleExportToExcel("positionName", position)}
+        >
+          {position}
+        </Menu.Item>
+      ))}
+    </Menu.SubMenu>
+
+    <Menu.SubMenu key="department" title="Export by Department">
+      {uniqueDepartments.map(department => (
+        <Menu.Item 
+          key={`dept-${department}`}
+          onClick={() => handleExportToExcel("departmentName", department)}
+        >
+          {department}
+        </Menu.Item>
+      ))}
+    </Menu.SubMenu>
+
+    <Menu.SubMenu key="status" title="Export by Employment Status">
+      {uniqueStatuses.map(status => (
+        <Menu.Item 
+          key={`status-${status}`}
+          onClick={() => handleExportToExcel("employmentStatus", status)}
+        >
+          {status}
+        </Menu.Item>
+      ))}
+    </Menu.SubMenu>
+
+    <Menu.SubMenu key="gender" title="Export by Gender">
+      {uniqueGenders.map(gender => (
+        <Menu.Item
+          key={`gender-${gender}`}
+          onClick={() => handleExportToExcel("gender", gender)}
+        >
+          {gender}
+        </Menu.Item>
+      ))}
+    </Menu.SubMenu>
+
+
+    <Menu.Divider />
+
+    <Menu.Item key="all" onClick={() => handleExportToExcel()}>
+      Export All Data
+    </Menu.Item>
+  </Menu>
+);
+
+
+  // Print menu
+  const printMenu = (
+    <Menu>
+      <Menu.SubMenu key="position" title="Print by Position">
+        {uniquePositions.map(position => (
+          <Menu.Item 
+            key={`print-pos-${position}`}
+            onClick={() => handlePrint('positionName', position)}
+          >
+            {position}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+      <Menu.SubMenu key="department" title="Print by Department">
+        {uniqueDepartments.map(department => (
+          <Menu.Item 
+            key={`print-dept-${department}`}
+            onClick={() => handlePrint('departmentName', department)}
+          >
+            {department}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+      <Menu.SubMenu key="status" title="Print by Employment Status">
+        {uniqueStatuses.map(status => (
+          <Menu.Item 
+            key={`print-status-${status}`}
+            onClick={() => handlePrint('employmentStatus', status)}
+          >
+            {status}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+      <Menu.SubMenu key="gender" title="Print by Gender">
+        {uniqueGenders.map(gender => (
+          <Menu.Item
+            key={`print-gender-${gender}`}
+            onClick={() => handlePrint('gender', gender)}
+          >
+            {gender}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
+      <Menu.Divider />
+      <Menu.Item key="all" onClick={() => handlePrint()}>
+        Print All Data
+      </Menu.Item>
+    </Menu>
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -103,35 +418,34 @@ const FacultyPage: React.FC = () => {
       gender: "Male",
     });
     setEditingId(null);
-    setSelectedEmployee(null); // Clear selected employee for new creation
+    setSelectedEmployee(null);
     setIsModalVisible(true);
   };
 
-const handleEdit = (record: Employee) => {
-  // Only admins or the employee themselves can edit
-  if (!isAdmin && record.employeeID !== user?.employeeId) {
-    message.warning("You can only edit your own profile");
-    return;
-  }
+  const handleEdit = (record: Employee) => {
+    if (!isAdmin && record.employeeID !== user?.employeeId) {
+      message.warning("You can only edit your own profile");
+      return;
+    }
 
-  form.setFieldsValue({
-    employeeID: record.employeeID,
-    firstName: record.firstName,
-    lastName: record.lastName,
-    gender: record.gender || "Male",
-    dateOfBirth: record.dateOfBirth ? moment(record.dateOfBirth) : null,
-    email: record.email,
-    phoneNumber: record.phoneNumber,
-    address: record.address,
-    departmentID: record.departmentID ? Number(record.departmentID) : null,
-    positionID: record.positionID ? Number(record.positionID) : null,
-    employmentStatus: record.employmentStatus || "Hired",
-    hireDate: record.hireDate ? moment(record.hireDate) : moment(),
-  });
-  setEditingId(record.employeeID || null);
-  setSelectedEmployee(record);
-  setIsModalVisible(true);
-};
+    form.setFieldsValue({
+      employeeID: record.employeeID,
+      firstName: record.firstName,
+      lastName: record.lastName,
+      gender: record.gender || "Male",
+      dateOfBirth: record.dateOfBirth ? moment(record.dateOfBirth) : null,
+      email: record.email,
+      phoneNumber: record.phoneNumber,
+      address: record.address,
+      departmentID: record.departmentID ? Number(record.departmentID) : null,
+      positionID: record.positionID ? Number(record.positionID) : null,
+      employmentStatus: record.employmentStatus || "Hired",
+      hireDate: record.hireDate ? moment(record.hireDate) : moment(),
+    });
+    setEditingId(record.employeeID || null);
+    setSelectedEmployee(record);
+    setIsModalVisible(true);
+  };
 
   const handleDelete = async (id: number) => {
     if (!isAdmin) {
@@ -152,42 +466,39 @@ const handleEdit = (record: Employee) => {
     }
   };
 
-const handleSubmit = async () => {
-  try {
-    const values = await form.validateFields();
-    setLoading(true);
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setLoading(true);
 
-    console.log("Raw form values:", values);
+      console.log("Raw form values:", values);
 
-    const formattedValues = {
-      ...values,
-      dateOfBirth: values.dateOfBirth 
-        ? moment(values.dateOfBirth).format('YYYY-MM-DD') 
-        : null,
-      hireDate: values.hireDate 
-        ? moment(values.hireDate).format('YYYY-MM-DD') 
-        : moment().format('YYYY-MM-DD'),
-      departmentID: Number(values.departmentID),
-      positionID: Number(values.positionID),
-    };
+      const formattedValues = {
+        ...values,
+        dateOfBirth: values.dateOfBirth 
+          ? moment(values.dateOfBirth).format('YYYY-MM-DD') 
+          : null,
+      };
 
-    console.log("Formatted values before API call:", formattedValues);
+      if (isAdmin) {
+        formattedValues.hireDate = values.hireDate 
+          ? moment(values.hireDate).format('YYYY-MM-DD') 
+          : moment().format('YYYY-MM-DD');
+        formattedValues.departmentID = Number(values.departmentID);
+        formattedValues.positionID = Number(values.positionID);
+      }
 
-    if (editingId) {
-      // If not admin and editing own profile, exclude hireDate from update
-      if (!isAdmin && selectedEmployee?.employeeID === user?.employeeId) {
-        const { hireDate, ...valuesWithoutHireDate } = formattedValues;
-        const updatedEmployee = await EmployeeService.update(
-          editingId,
-          valuesWithoutHireDate
-        );
-        console.log("API response (without hire date):", updatedEmployee);
-        setFacultyData(
-          facultyData.map((item) =>
-            item.employeeID === editingId ? updatedEmployee : item
-          )
-        );
-      } else {
+      console.log("Formatted values before API call:", formattedValues);
+
+      if (editingId) {
+        if (!isAdmin) {
+          formattedValues.departmentID = selectedEmployee?.departmentID;
+          formattedValues.positionID = selectedEmployee?.positionID;
+          formattedValues.hireDate = selectedEmployee?.hireDate 
+            ? moment(selectedEmployee.hireDate).format('YYYY-MM-DD')
+            : moment().format('YYYY-MM-DD');
+        }
+
         const updatedEmployee = await EmployeeService.update(
           editingId,
           formattedValues
@@ -198,29 +509,28 @@ const handleSubmit = async () => {
             item.employeeID === editingId ? updatedEmployee : item
           )
         );
+        message.success("Faculty updated successfully");
+      } else {
+        const { employeeID, ...employeeDataWithoutId } = formattedValues;
+        const newEmployee = await EmployeeService.create(employeeDataWithoutId);
+        setFacultyData([...facultyData, newEmployee]);
+        message.success("Faculty added successfully");
       }
-      message.success("Faculty updated successfully");
-    } else {
-      const { employeeID, ...employeeDataWithoutId } = formattedValues;
-      const newEmployee = await EmployeeService.create(employeeDataWithoutId);
-      setFacultyData([...facultyData, newEmployee]);
-      message.success("Faculty added successfully");
-    }
 
-    setIsModalVisible(false);
-    form.resetFields();
-    setSelectedEmployee(null); // Clear selected employee after submit
-  } catch (err) {
-    console.error("Error in handleSubmit:", err);
-    message.error("Operation failed. Please check the form and try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setIsModalVisible(false);
+      form.resetFields();
+      setSelectedEmployee(null);
+    } catch (err) {
+      console.error("Error in handleSubmit:", err);
+      message.error("Operation failed. Please check the form and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddUserAccount = (record: Employee, e?: React.MouseEvent) => {
     if (e) {
-      e.stopPropagation(); // Prevent row click event
+      e.stopPropagation();
     }
     
     if (!isAdmin) {
@@ -241,7 +551,7 @@ const handleSubmit = async () => {
       positions: positions.find(p => p.positionID === record.positionID)?.positionName || 3,
     });
 
-    setIsUserModalVisible(true); // Open USER modal, not employee modal
+    setIsUserModalVisible(true);
   };
 
   const handleSubmitUserAccount = async () => {
@@ -275,11 +585,25 @@ const handleSubmit = async () => {
 
   const columns: ColumnsType<Employee> = [
     {
+      title: "Employee ID",
+      dataIndex: "employeeID",
+      key: "employeeID",
+      responsive: ['sm'],
+      render: (id: number, record: Employee) => (
+        <span className="employee-id">
+          {formatEmployeeId(id, record.hireDate)}
+        </span>
+      ),
+    },
+    {
       title: "Name",
       key: "name",
       responsive: ['xs', 'sm'],
       render: (_, record) => (
         <div className="name-cell">
+          <div className="employee-id-small">
+            {formatEmployeeId(record.employeeID, record.hireDate)}
+          </div>
           <div className="name-line">{record.firstName}</div>
           <div className="name-line">{record.lastName}</div>
         </div>
@@ -407,35 +731,59 @@ const handleSubmit = async () => {
     );
   }
 
+  const cardExtra = (
+    <div className="search-add-container">
+      <Input.Search
+        placeholder="Search faculty"
+        allowClear
+        onChange={(e) => setSearchText(e.target.value)}
+        className="search-input"
+        enterButton
+        size={screens.xs ? "small" : "middle"}
+      />
+      <Space>
+        <Dropdown overlay={printMenu} placement="bottomRight" trigger={['click']}>
+          <Button 
+            icon={<PrinterOutlined />}
+            className="export-button"
+            size={screens.xs ? "small" : "middle"}
+          >
+            {screens.sm ? "Print" : ""}
+          </Button>
+        </Dropdown>
+        
+        <Dropdown overlay={exportMenu} placement="bottomRight" trigger={['click']}>
+          <Button 
+            icon={<FileExcelOutlined />}
+            type="primary"
+            className="export-button"
+            size={screens.xs ? "small" : "middle"}
+          >
+            {screens.sm ? "Export" : ""}
+          </Button>
+        </Dropdown>
+        
+        {isAdmin && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+            className="add-button"
+            size={screens.xs ? "small" : "middle"}
+          >
+            {screens.sm ? "Add Faculty" : "Add"}
+          </Button>
+        )}
+      </Space>
+    </div>
+  );
+
   return (
-    <div className="faculty-page-container">
+    <div className="faculty-page-container" ref={tableRef}>
       <Card
         title="Faculty Members"
         className="faculty-card"
-        extra={
-          <div className="search-add-container">
-            <Input.Search
-              placeholder="Search faculty"
-              allowClear
-              onChange={(e) => setSearchText(e.target.value)}
-              className="search-input"
-              enterButton
-              size={screens.xs ? "small" : "middle"}
-            />
-            {/* Only show Add Faculty button for Admins */}
-            {isAdmin && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
-                className="add-button"
-                size={screens.xs ? "small" : "middle"}
-              >
-                {screens.sm ? "Add Faculty" : "Add"}
-              </Button>
-            )}
-          </div>
-        }
+        extra={cardExtra}
       >
         <Table
           columns={columns}
@@ -462,7 +810,7 @@ const handleSubmit = async () => {
       {/* Edit/Create Faculty Modal */}
       <Modal
         title={editingId ? `Edit Info: ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}` : "Add New Faculty Member"}
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
           setSelectedEmployee(null);
@@ -576,9 +924,9 @@ const handleSubmit = async () => {
              <Form.Item
               name="departmentID"
               label="Department"
-              rules={[{ required: true, message: "Please select department" }]}
+              rules={[{ required: isAdmin, message: "Please select department" }]}
             >
-              <Select>
+              <Select disabled={!isAdmin}>
                 {departments.map((dept) => (
                   <Option key={dept.departmentID} value={dept.departmentID}>
                     {dept.departmentName}
@@ -590,12 +938,13 @@ const handleSubmit = async () => {
               <Form.Item
                 name="positionID"
                 label="Position"
-                rules={[{ required: true, message: "Please select position" }]}
+                rules={[{ required: isAdmin, message: "Please select position" }]}
                 className="form-item"
               >
                 <Select
                   placeholder="Select Position"
                   loading={loading}
+                  disabled={!isAdmin}
                   notFoundContent={error ? "Failed to load positions" : "No positions available"}
                 >
                   {positions.map(position => (
@@ -611,25 +960,40 @@ const handleSubmit = async () => {
             </div>
 
             <div className="form-row">
-              <Form.Item
-                name="employmentStatus"
-                label="Employment Status"
-                initialValue="Hired"
-                className="form-item"
-              >
-                <Select disabled={!isAdmin}>
-                  <Option value="Hired">Hired</Option>
-                  <Option value="Probation">Probation</Option>
-                  <Option value="Terminated">Terminated</Option>
-                  <Option value="Resigned">Resigned</Option>
-                </Select>
-              </Form.Item>
+           <Form.Item
+              name="employmentStatus"
+              label="Employment Status"
+              initialValue="Hired"
+              className="form-item"
+            >
+              <Select disabled={!isAdmin}>
+                <Option value="Hired">Hired</Option>
+                <Option value="Probation">Probation</Option>
+                {editingId && (
+                  <>
+                    <Option value="Terminated">Terminated</Option>
+                    <Option value="Resigned">Resigned</Option>
+                  </>
+                )}
+              </Select>
+            </Form.Item>
 
               <Form.Item
                 name="hireDate"
                 label="Hire Date"
                 initialValue={moment()}
                 className="form-item"
+                rules={[
+                  { 
+                    required: isAdmin, 
+                    message: "Please select hire date",
+                    validator: (_, value) => {
+                      if (!isAdmin) return Promise.resolve();
+                      if (!value) return Promise.reject(new Error('Please select hire date'));
+                      return Promise.resolve();
+                    }
+                  },
+                ]}
               >
                 <DatePicker 
                   style={{ width: "100%" }} 
@@ -644,7 +1008,7 @@ const handleSubmit = async () => {
       {/* Create User Account Modal */}
       <Modal
         title="Create User Account"
-        visible={isUserModalVisible}
+        open={isUserModalVisible}
         onOk={handleSubmitUserAccount}
         onCancel={() => {
           setIsUserModalVisible(false);
@@ -700,7 +1064,7 @@ const handleSubmit = async () => {
       {/* Employee Details Modal */}
       <Modal
         title={`${selectedEmployeeDetails?.firstName} ${selectedEmployeeDetails?.lastName} - Profile`}
-        visible={detailModalVisible}
+        open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={[
           <Button 
@@ -728,7 +1092,9 @@ const handleSubmit = async () => {
                   <div className="horizontal-details-grid">
                     <div className="detail-row">
                       <span className="detail-label">Employee ID:</span>
-                      <span className="detail-value">{selectedEmployeeDetails.employeeID}</span>
+                      <span className="detail-value employee-id">
+                        {formatEmployeeId(selectedEmployeeDetails.employeeID, selectedEmployeeDetails.hireDate)}
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Name:</span>

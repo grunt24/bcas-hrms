@@ -3,11 +3,11 @@ import {
   DashboardOutlined,
   TeamOutlined,
   UserOutlined,
-  SettingOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  FolderOutlined
+  FolderOutlined,
+  EditOutlined
 } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
@@ -78,7 +78,7 @@ const MainLayout = () => {
       {
         key: "faculty",
         icon: <TeamOutlined />,
-        label: "Faculty",
+        label: "Employees",
       }
     ];
 
@@ -99,6 +99,12 @@ const MainLayout = () => {
         icon: <UserOutlined />,
         label: "User Management",
       },
+
+       {
+        key: "evaluations",
+        icon: <EditOutlined />,
+        label: "Evaluations",
+      },
     ];
 
     const commonItems = [
@@ -106,14 +112,6 @@ const MainLayout = () => {
         key: "contracts",
         icon: <FolderOutlined />,
         label: "Contracts",
-      }
-    ];
-
-    const adminOnlyItems = [
-      {
-        key: "settings",
-        icon: <SettingOutlined />,
-        label: "Settings",
       }
     ];
 
@@ -133,7 +131,7 @@ const MainLayout = () => {
     menuItems = [...menuItems, ...commonItems];
     
     if (isAdmin) {
-      menuItems = [...menuItems, ...adminOnlyItems];
+      menuItems = [...menuItems,];
     }
     
     menuItems.push(logoutItem);
@@ -155,7 +153,7 @@ const MainLayout = () => {
         collapsible
         collapsed={!mobileView && collapsed}
         onCollapse={(value) => setCollapsed(value)}
-        className={mobileMenuOpen ? "mobile-open" : ""}
+        className={`sidebar ${mobileMenuOpen ? "mobile-open" : ""}`}
         breakpoint="lg"
         collapsedWidth={mobileView ? 0 : 80}
         trigger={mobileView ? null : undefined}
@@ -182,7 +180,7 @@ const MainLayout = () => {
           items={getMenuItems()}
         />
       </Sider>
-      <Layout>
+      <Layout className="main-content">
         <Header style={{ padding: 0, background: "#fff", textAlign: "center" }}>
           <h3 style={{ margin: 0, padding: 16 }}>
             Welcome to BCAS HRMS
