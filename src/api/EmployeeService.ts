@@ -41,7 +41,24 @@ update: async (id: number, employee: Partial<Employee>): Promise<Employee> => {
       PositionID: employee.positionID,
       DepartmentID: employee.departmentID,
       EmploymentStatus: employee.employmentStatus,
-      HireDate: employee.hireDate
+      HireDate: employee.hireDate,
+      MemberFirstName: employee.memberFirstName,
+      MemberLastName: employee.memberLastName,
+      MemberGender: employee.memberGender,
+      MemberAddress: employee.memberAddress,
+      MemberPhoneNumber: employee.memberPhoneNumber,
+      EducationalAttainment: employee.educationalAttainment,
+      InstitutionName: employee.institutionName,
+      YearGraduated: employee.yearGraduated,
+      CourseName: employee.courseName,
+      PreviousPosition: employee.previousPosition,
+      OfficeName: employee.officeName,
+      DurationStart: employee.durationStart,
+      DurationEnd: employee.durationEnd,
+      AgencyName: employee.agencyName,
+      Supervisor: employee.supervisor,
+      Accomplishment: employee.accomplishment,
+      Summary: employee.summary
     };
 
     const response = await axiosInstance.patch<Employee>(

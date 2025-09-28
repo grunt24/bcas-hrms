@@ -16,6 +16,7 @@ import {
   Tabs,
   Dropdown,
   Menu,
+  Divider,
 } from "antd";
 import { 
   PlusOutlined, 
@@ -42,9 +43,19 @@ const { Option } = Select;
 const { useBreakpoint } = Grid;
 const { TabPane } = Tabs;
 
+const EDUCATIONAL_ATTAINMENT_OPTIONS = [
+  "Elementary",
+  "High School",
+  "Vocational",
+  "Associate Degree",
+  "Bachelor's Degree",
+  "Master's Degree",
+  "Doctorate",
+  "Post-Doctoral"
+];
+
 // Excel export utility functions
 const exportToExcel = (data: any[], filename: string, category?: string) => {
-  // Create CSV content
   const headers = [
     'Employee ID',
     'First Name',
@@ -57,7 +68,16 @@ const exportToExcel = (data: any[], filename: string, category?: string) => {
     'Department',
     'Position',
     'Employment Status',
-    'Hire Date'
+    'Hire Date',
+    'Family Member First Name',
+    'Family Member Last Name',
+    'Family Member Gender',
+    'Family Member Address',
+    'Family Member Phone',
+    'Educational Attainment',
+    'Institution Name',
+    'Year Graduated',
+    'Course Name'
   ].join(',');
 
   const rows = data.map(employee => [
@@ -72,12 +92,20 @@ const exportToExcel = (data: any[], filename: string, category?: string) => {
     `"${employee.departmentName || ''}"`,
     `"${employee.positionName || ''}"`,
     `"${employee.employmentStatus || ''}"`,
-    `"${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}"`
+    `"${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}"`,
+    `"${employee.memberFirstName || ''}"`,
+    `"${employee.memberLastName || ''}"`,
+    `"${employee.memberGender || ''}"`,
+    `"${employee.memberAddress || ''}"`,
+    `"${employee.memberPhoneNumber || ''}"`,
+    `"${employee.educationalAttainment || ''}"`,
+    `"${employee.institutionName || ''}"`,
+    `"${employee.yearGraduated ? moment(employee.yearGraduated).format('YYYY') : ''}"`,
+     `"${employee.courseName || ''}"`,
   ].join(','));
 
   const csvContent = [headers, ...rows].join('\n');
 
-  // Create and download file
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
@@ -94,7 +122,7 @@ const FacultyPage: React.FC = () => {
   const [searchText, setSearchText] = useState("");
   const [facultyData, setFacultyData] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isUserModalVisible, setIsUserModalVisible] = useState(false);
@@ -129,7 +157,6 @@ const FacultyPage: React.FC = () => {
     return `${year}-${formattedId}`;
   };
 
-  // Enhanced faculty data with formatted information
   const getEnhancedFacultyData = () => {
     return facultyData.map(employee => ({
       ...employee,
@@ -139,9 +166,7 @@ const FacultyPage: React.FC = () => {
       gender: employee.gender || 'N/A'
     }));
   };
-  
 
-  // Print functionality
   const handlePrint = (category?: string, categoryValue?: string) => {
     const enhancedData = getEnhancedFacultyData();
     let dataToPrint = enhancedData;
@@ -197,6 +222,8 @@ const FacultyPage: React.FC = () => {
               <th>Position</th>
               <th>Status</th>
               <th>Hire Date</th>
+              <th>Family Member</th>
+              <th>Gender</th>
             </tr>
           </thead>
           <tbody>
@@ -211,6 +238,8 @@ const FacultyPage: React.FC = () => {
                 <td>${employee.positionName}</td>
                 <td>${employee.employmentStatus || ''}</td>
                 <td>${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}</td>
+                <td>${employee.memberFirstName ? `${employee.memberFirstName} ${employee.memberLastName}` : 'N/A'}</td>
+                <td>${employee.memberGender || 'N/A'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -227,7 +256,6 @@ const FacultyPage: React.FC = () => {
     printWindow.document.close();
   };
 
-  // Export to Excel functionality
   const handleExportToExcel = (category?: string, categoryValue?: string) => {
     const enhancedData = getEnhancedFacultyData();
     let dataToExport = enhancedData;
@@ -244,86 +272,78 @@ const FacultyPage: React.FC = () => {
     message.success(`Data exported successfully!`);
   };
 
-  // Get unique values for categories
-  // Get unique values for categories
-const getUniqueCategories = () => {
-  const enhancedData = getEnhancedFacultyData();
+  const getUniqueCategories = () => {
+    const enhancedData = getEnhancedFacultyData();
 
-  const positions = [...new Set(enhancedData.map(e => e.positionName))].filter(Boolean);
-  const departments = [...new Set(enhancedData.map(e => e.departmentName))].filter(Boolean);
-  const employmentStatuses = [...new Set(enhancedData.map(e => e.employmentStatus))].filter(Boolean);
-  const genders = [...new Set(enhancedData.map(e => e.gender))].filter(Boolean);
-  
+    const positions = [...new Set(enhancedData.map(e => e.positionName))].filter(Boolean);
+    const departments = [...new Set(enhancedData.map(e => e.departmentName))].filter(Boolean);
+    const employmentStatuses = [...new Set(enhancedData.map(e => e.employmentStatus))].filter(Boolean);
+    const genders = [...new Set(enhancedData.map(e => e.gender))].filter(Boolean);
 
+    return { positions, departments, employmentStatuses, genders };
+  };
 
-  return { positions, departments, employmentStatuses, genders };
-};
+  const {
+    positions: uniquePositions,
+    departments: uniqueDepartments,
+    employmentStatuses: uniqueStatuses,
+    genders: uniqueGenders
+  } = getUniqueCategories();
 
-const {
-  positions: uniquePositions,
-  departments: uniqueDepartments,
-  employmentStatuses: uniqueStatuses,
-  genders: uniqueGenders
-} = getUniqueCategories();
+  const exportMenu = (
+    <Menu>
+      <Menu.SubMenu key="position" title="Export by Position">
+        {uniquePositions.map(position => (
+          <Menu.Item 
+            key={`pos-${position}`}
+            onClick={() => handleExportToExcel("positionName", position)}
+          >
+            {position}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
 
-  // Dropdown menu for export options
-const exportMenu = (
-  <Menu>
-    <Menu.SubMenu key="position" title="Export by Position">
-      {uniquePositions.map(position => (
-        <Menu.Item 
-          key={`pos-${position}`}
-          onClick={() => handleExportToExcel("positionName", position)}
-        >
-          {position}
-        </Menu.Item>
-      ))}
-    </Menu.SubMenu>
+      <Menu.SubMenu key="department" title="Export by Department">
+        {uniqueDepartments.map(department => (
+          <Menu.Item 
+            key={`dept-${department}`}
+            onClick={() => handleExportToExcel("departmentName", department)}
+          >
+            {department}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
 
-    <Menu.SubMenu key="department" title="Export by Department">
-      {uniqueDepartments.map(department => (
-        <Menu.Item 
-          key={`dept-${department}`}
-          onClick={() => handleExportToExcel("departmentName", department)}
-        >
-          {department}
-        </Menu.Item>
-      ))}
-    </Menu.SubMenu>
+      <Menu.SubMenu key="status" title="Export by Employment Status">
+        {uniqueStatuses.map(status => (
+          <Menu.Item 
+            key={`status-${status}`}
+            onClick={() => handleExportToExcel("employmentStatus", status)}
+          >
+            {status}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
 
-    <Menu.SubMenu key="status" title="Export by Employment Status">
-      {uniqueStatuses.map(status => (
-        <Menu.Item 
-          key={`status-${status}`}
-          onClick={() => handleExportToExcel("employmentStatus", status)}
-        >
-          {status}
-        </Menu.Item>
-      ))}
-    </Menu.SubMenu>
+      <Menu.SubMenu key="gender" title="Export by Gender">
+        {uniqueGenders.map(gender => (
+          <Menu.Item
+            key={`gender-${gender}`}
+            onClick={() => handleExportToExcel("gender", gender)}
+          >
+            {gender}
+          </Menu.Item>
+        ))}
+      </Menu.SubMenu>
 
-    <Menu.SubMenu key="gender" title="Export by Gender">
-      {uniqueGenders.map(gender => (
-        <Menu.Item
-          key={`gender-${gender}`}
-          onClick={() => handleExportToExcel("gender", gender)}
-        >
-          {gender}
-        </Menu.Item>
-      ))}
-    </Menu.SubMenu>
+      <Menu.Divider />
 
+      <Menu.Item key="all" onClick={() => handleExportToExcel()}>
+        Export All Data
+      </Menu.Item>
+    </Menu>
+  );
 
-    <Menu.Divider />
-
-    <Menu.Item key="all" onClick={() => handleExportToExcel()}>
-      Export All Data
-    </Menu.Item>
-  </Menu>
-);
-
-
-  // Print menu
   const printMenu = (
     <Menu>
       <Menu.SubMenu key="position" title="Print by Position">
@@ -385,7 +405,6 @@ const exportMenu = (
           PositionService.getAll()
         ]);
         
-        // Filter employees based on role
         const employees = isAdmin 
           ? allEmployees
           : allEmployees.filter(emp => emp.employeeID === (user?.employeeId || 0));
@@ -416,6 +435,7 @@ const exportMenu = (
       employmentStatus: "Hired",
       hireDate: moment(),
       gender: "Male",
+      memberGender: "Male",
     });
     setEditingId(null);
     setSelectedEmployee(null);
@@ -441,6 +461,27 @@ const exportMenu = (
       positionID: record.positionID ? Number(record.positionID) : null,
       employmentStatus: record.employmentStatus || "Hired",
       hireDate: record.hireDate ? moment(record.hireDate) : moment(),
+      
+      // Family member fields
+      memberFirstName: record.memberFirstName,
+      memberLastName: record.memberLastName,
+      memberGender: record.memberGender || "Male",
+      memberAddress: record.memberAddress,
+      memberPhoneNumber: record.memberPhoneNumber,
+      // Educational Attainment
+      educationalAttainment: record.educationalAttainment,
+      institutionName: record.institutionName,
+      yearGraduated: record.yearGraduated ? moment(record.yearGraduated) : null,
+      courseName: record.courseName,
+      // Work Experience
+      previousPosition: record.previousPosition,
+      officeName: record.officeName,
+      durationStart: record.durationStart ? moment(record.durationStart) : null,
+      durationEnd: record.durationEnd ? moment(record.durationEnd) : null,
+      agencyName: record.agencyName,
+      supervisor: record.supervisor,
+      accomplishment: record.accomplishment,
+      summary: record.summary,
     });
     setEditingId(record.employeeID || null);
     setSelectedEmployee(record);
@@ -471,39 +512,32 @@ const exportMenu = (
       const values = await form.validateFields();
       setLoading(true);
 
-      console.log("Raw form values:", values);
-
       const formattedValues = {
         ...values,
         dateOfBirth: values.dateOfBirth 
           ? moment(values.dateOfBirth).format('YYYY-MM-DD') 
           : null,
+        hireDate: values.hireDate 
+          ? moment(values.hireDate).format('YYYY-MM-DD') 
+          : moment().format('YYYY-MM-DD'),
+        departmentID: Number(values.departmentID),
+        positionID: Number(values.positionID),
+        yearGraduated: values.yearGraduated 
+        ? moment(values.yearGraduated).format('YYYY-MM-DD') 
+        : null,
+        durationStart: values.durationStart 
+        ? moment(values.durationStart).format('YYYY-MM-DD') 
+        : null,
+        durationEnd: values.durationEnd 
+        ? moment(values.durationEnd).format('YYYY-MM-DD') 
+        : null,
       };
 
-      if (isAdmin) {
-        formattedValues.hireDate = values.hireDate 
-          ? moment(values.hireDate).format('YYYY-MM-DD') 
-          : moment().format('YYYY-MM-DD');
-        formattedValues.departmentID = Number(values.departmentID);
-        formattedValues.positionID = Number(values.positionID);
-      }
-
-      console.log("Formatted values before API call:", formattedValues);
-
       if (editingId) {
-        if (!isAdmin) {
-          formattedValues.departmentID = selectedEmployee?.departmentID;
-          formattedValues.positionID = selectedEmployee?.positionID;
-          formattedValues.hireDate = selectedEmployee?.hireDate 
-            ? moment(selectedEmployee.hireDate).format('YYYY-MM-DD')
-            : moment().format('YYYY-MM-DD');
-        }
-
         const updatedEmployee = await EmployeeService.update(
           editingId,
           formattedValues
         );
-        console.log("API response:", updatedEmployee);
         setFacultyData(
           facultyData.map((item) =>
             item.employeeID === editingId ? updatedEmployee : item
@@ -601,9 +635,6 @@ const exportMenu = (
       responsive: ['xs', 'sm'],
       render: (_, record) => (
         <div className="name-cell">
-          <div className="employee-id-small">
-            {formatEmployeeId(record.employeeID, record.hireDate)}
-          </div>
           <div className="name-line">{record.firstName}</div>
           <div className="name-line">{record.lastName}</div>
         </div>
@@ -668,6 +699,16 @@ const exportMenu = (
       key: "hireDate",
       responsive: ['md'],
       render: (date) => moment(date).format(screens.md ? 'YYYY-MM-DD' : 'YY-MM-DD'),
+    },
+    {
+      title: "Family Member",
+      key: "familyMember",
+      responsive: ['lg'],
+      render: (_, record) => (
+        <span>
+          {record.memberFirstName ? `${record.memberFirstName} ${record.memberLastName}` : 'N/A'}
+        </span>
+      ),
     },
     {
       title: "Actions",
@@ -843,6 +884,8 @@ const exportMenu = (
               <Input />
             </Form.Item>
 
+            <Divider orientation="left">Personal Information</Divider>
+            
             <div className="form-row">
               <Form.Item
                 name="firstName"
@@ -880,9 +923,7 @@ const exportMenu = (
               <Form.Item
                 name="dateOfBirth"
                 label="Date of Birth"
-                rules={[
-                  { required: true, message: "Please select date of birth" },
-                ]}
+                rules={[{ required: true, message: "Please select date of birth" }]}
                 className="form-item"
               >
                 <DatePicker style={{ width: "100%" }} />
@@ -920,20 +961,23 @@ const exportMenu = (
               <Input.TextArea rows={2} />
             </Form.Item>
 
+            <Divider orientation="left">Employment Information</Divider>
+
             <div className="form-row">
-             <Form.Item
-              name="departmentID"
-              label="Department"
-              rules={[{ required: isAdmin, message: "Please select department" }]}
-            >
-              <Select disabled={!isAdmin}>
-                {departments.map((dept) => (
-                  <Option key={dept.departmentID} value={dept.departmentID}>
-                    {dept.departmentName}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+              <Form.Item
+                name="departmentID"
+                label="Department"
+                rules={[{ required: isAdmin, message: "Please select department" }]}
+                className="form-item"
+              >
+                <Select disabled={!isAdmin}>
+                  {departments.map((dept) => (
+                    <Option key={dept.departmentID} value={dept.departmentID}>
+                      {dept.departmentName}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
               <Form.Item
                 name="positionID"
@@ -941,66 +985,204 @@ const exportMenu = (
                 rules={[{ required: isAdmin, message: "Please select position" }]}
                 className="form-item"
               >
-                <Select
-                  placeholder="Select Position"
-                  loading={loading}
-                  disabled={!isAdmin}
-                  notFoundContent={error ? "Failed to load positions" : "No positions available"}
-                >
+                <Select disabled={!isAdmin}>
                   {positions.map(position => (
-                    <Option 
-                      key={position.positionID}
-                      value={position.positionID}
-                    >
+                    <Option key={position.positionID} value={position.positionID}>
                       {position.positionName}
                     </Option>
                   ))}
                 </Select>
               </Form.Item>
             </div>
-
             <div className="form-row">
-           <Form.Item
-              name="employmentStatus"
-              label="Employment Status"
-              initialValue="Hired"
-              className="form-item"
-            >
-              <Select disabled={!isAdmin}>
-                <Option value="Hired">Hired</Option>
-                <Option value="Probation">Probation</Option>
-                {editingId && (
-                  <>
-                    <Option value="Terminated">Terminated</Option>
-                    <Option value="Resigned">Resigned</Option>
-                  </>
-                )}
-              </Select>
-            </Form.Item>
+              <Form.Item
+                name="employmentStatus"
+                label="Employment Status"
+                initialValue="Hired"
+                className="form-item"
+              >
+                <Select disabled={!isAdmin}>
+                  <Option value="Hired">Hired</Option>
+                  <Option value="Probation">Probation</Option>
+                  {editingId && (
+                    <>
+                      <Option value="Terminated">Terminated</Option>
+                      <Option value="Resigned">Resigned</Option>
+                    </>
+                  )}
+                </Select>
+              </Form.Item>
 
               <Form.Item
                 name="hireDate"
                 label="Hire Date"
                 initialValue={moment()}
                 className="form-item"
-                rules={[
-                  { 
-                    required: isAdmin, 
-                    message: "Please select hire date",
-                    validator: (_, value) => {
-                      if (!isAdmin) return Promise.resolve();
-                      if (!value) return Promise.reject(new Error('Please select hire date'));
-                      return Promise.resolve();
-                    }
-                  },
-                ]}
+                rules={[{ required: isAdmin, message: "Please select hire date" }]}
+              >
+                <DatePicker style={{ width: "100%" }} disabled={!isAdmin} />
+              </Form.Item>
+            </div>
+
+            <Divider orientation="left">Educational Attainment</Divider>
+
+            <div className="form-row">
+              
+              <Form.Item
+                name="educationalAttainment"
+                label="Educational Attainment"
+                className="form-item"
+              >
+                <Select placeholder="Select Educational Attainment">
+                  {EDUCATIONAL_ATTAINMENT_OPTIONS.map(level => (
+                    <Option key={level} value={level}>
+                      {level}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                name="yearGraduated"
+                label="Year Graduated"
+                className="form-item"
               >
                 <DatePicker 
                   style={{ width: "100%" }} 
-                  disabled={!isAdmin}
+                  picker="year"
+                  placeholder="Select Year"
                 />
               </Form.Item>
             </div>
+
+             <Form.Item
+              name="courseName"
+              label="Course Name"
+            >
+              <Input placeholder="Course Name" />
+            </Form.Item>
+
+
+            <Form.Item
+              name="institutionName"
+              label="Institution Name"
+            >
+              <Input placeholder="Name of school or institution" />
+            </Form.Item>
+
+            <Divider orientation="left">Work Experience</Divider>
+            <div className="form-row">
+              <Form.Item
+                name="previousPosition"
+                label="Previous Position"
+                className="form-item"
+              >
+                <Input placeholder="Previous Position" />
+              </Form.Item>
+
+              <Form.Item
+                name="officeName"
+                label="Office Name"
+                className="form-item"
+              >
+                <Input placeholder="Office Name" />
+              </Form.Item>
+            </div>
+            <div className="form-row">
+              <Form.Item
+                name="durationStart"
+                label="Duration Start"
+                className="form-item"
+              >
+                <DatePicker style={{ width: "100%" }} placeholder="Start Date" />
+              </Form.Item>
+              <Form.Item
+                name="durationEnd"
+                label="Duration End"
+                className="form-item"
+              >
+                <DatePicker style={{ width: "100%" }} placeholder="End Date" />
+              </Form.Item>
+            </div>
+            <Form.Item
+              name="agencyName"
+              label="Agency Name"
+              className="form-item"
+            >
+              <Input placeholder="Agency Name" />
+            </Form.Item>
+
+            <Form.Item
+              name="supervisor"
+              label="Supervisor"
+              className="form-item"
+            >
+              <Input placeholder="Supervisor" />
+            </Form.Item>
+            <Form.Item
+              name="accomplishment"
+              label="List Of Accomplishment"
+              className="form-item"
+            >
+              <Input.TextArea rows={3} placeholder="Accomplishment" />
+            </Form.Item>
+
+            <Form.Item
+              name="summary"
+              label="Summary Of Actual Duties and Responsibilities"
+            >
+              <Input.TextArea rows={3} placeholder="Brief Summary of Work Experience" />
+            </Form.Item>
+
+
+            <Divider orientation="left">Family Member Information</Divider>
+
+            <div className="form-row">
+              <Form.Item
+                name="memberFirstName"
+                label="Family Member First Name"
+                className="form-item"
+              >
+                <Input placeholder="First Name" />
+              </Form.Item>
+
+              <Form.Item
+                name="memberLastName"
+                label="Family Member Last Name"
+                className="form-item"
+              >
+                <Input placeholder="Last Name" />
+              </Form.Item>
+            </div>
+
+            <div className="form-row">
+              <Form.Item
+                name="memberGender"
+                label="Family Member Gender"
+                className="form-item"
+              >
+                <Select placeholder="Select Gender">
+                  <Option value="Male">Male</Option>
+                  <Option value="Female">Female</Option>
+                  <Option value="Other">Other</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                name="memberPhoneNumber"
+                label="Family Member Phone"
+                className="form-item"
+              >
+                <Input placeholder="Phone Number" />
+              </Form.Item>
+            </div>
+
+            <Form.Item
+              name="memberAddress"
+              label="Family Member Address"
+            >
+              <Input.TextArea rows={2} placeholder="Address" />
+            </Form.Item>
           </Form>
         </div>
       </Modal>
@@ -1162,16 +1344,450 @@ const exportMenu = (
                 </div>
               </TabPane>
               <TabPane tab="Educational Attainment" key="2">
-                <p>No data yet. Add education info here.</p>
+                <div className="horizontal-details-container">                 
+                  <div className="horizontal-details-grid">
+                    <div className="detail-row">
+                      <span className="detail-label">Educational Attainment:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.educationalAttainment || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Year Graduated:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.yearGraduated ? 
+                          moment(selectedEmployeeDetails.yearGraduated).format('YYYY') : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Institution Name:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.institutionName || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Course:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.courseName || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {!selectedEmployeeDetails.educationalAttainment && (
+                  <div style={{ textAlign: 'center', marginTop: '20px', color: '#999' }}>
+                    <p>No educational information available.</p>
+                  </div>
+                )}
               </TabPane>
               <TabPane tab="Work Experience" key="3">
-                <p>No data yet. Add experience info here.</p>
+                               <div className="horizontal-details-container">                 
+                  <div className="horizontal-details-grid">
+                    <div className="detail-row">
+                      <span className="detail-label">Previous Position:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.previousPosition || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Office Name:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.officeName || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Duration:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.durationStart ? 
+                          moment(selectedEmployeeDetails.durationStart).format('YYYY-MM-DD') : 'N/A -'} || {selectedEmployeeDetails.durationEnd ? 
+                          moment(selectedEmployeeDetails.durationEnd).format('YYYY-MM-DD') : ' N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Agency Name:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.agencyName || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Supervisor:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.supervisor || 'N/A'}
+                      </span>
+                    </div>
+                     <div className="detail-row">
+                      <span className="detail-label">List of Accomplishments:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.accomplishment || 'N/A'}
+                      </span>
+                    </div>
+                     <div className="detail-row">
+                      <span className="detail-label">Summary of Actual Duties:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.summary || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {!selectedEmployeeDetails.educationalAttainment && (
+                  <div style={{ textAlign: 'center', marginTop: '20px', color: '#999' }}>
+                    <p>No educational information available.</p>
+                  </div>
+                )}
               </TabPane>
-              <TabPane tab="Family Data" key="4">
-                <p>No data yet. Add family info here.</p>
-              </TabPane>
-              <TabPane tab="Salary Adjustment" key="5">
-                <p>No data yet. Add salary info here.</p>
+              <TabPane tab="Requirements | Records" key="4">
+  <div className="requirements-container">
+    <div className="requirement-section">
+      <div className="requirement-item">
+        <div className="requirement-label">PSA Birth Certificate:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="psa-birth-certificate"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('psa-birth-certificate')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Marriage Certificate:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="marriage-certificate"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('marriage-certificate')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Passport-Sized Photographs:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="passport-photos"
+            className="file-input"
+            accept=".jpg,.jpeg,.png"
+            multiple
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('passport-photos')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Educational and Professional Credentials:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="educational-credentials"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            multiple
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('educational-credentials')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Training Certificates:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="training-certificates"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            multiple
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('training-certificates')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Professional Licenses or Certifications:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="professional-licenses"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            multiple
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('professional-licenses')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Social Security System (SSS) Number:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="sss-number"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('sss-number')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">PhilHealth Number:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="philhealth-number"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('philhealth-number')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">BIR TIN Number:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="bir-tin"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('bir-tin')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">Pag-IBIG Number:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="pag-ibig"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('pag-ibig')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+
+      <div className="requirement-item">
+        <div className="requirement-label">NBI Clearance:</div>
+        <div className="requirement-control">
+          <input 
+            type="file" 
+            id="nbi-clearance"
+            className="file-input"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+          />
+          <Button 
+            type="default" 
+            className="browse-button"
+            onClick={() => document.getElementById('nbi-clearance')?.click()}
+          >
+            Select File
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div className="requirements-actions">
+      <Button type="primary" className="submit-requirements">
+        Submit All Requirements
+      </Button>
+    </div>
+  </div>
+</TabPane>
+              <TabPane tab="Family Data" key="5">
+                        <div className="horizontal-details-container">
+                          <div className="horizontal-details-grid">
+                            <div className="detail-row">
+                              <span className="detail-label">Family Member Name:</span>
+                              <span className="detail-value">
+                                {selectedEmployeeDetails.memberFirstName && selectedEmployeeDetails.memberLastName ?
+                                  `${selectedEmployeeDetails.memberFirstName} ${selectedEmployeeDetails.memberLastName}` : 
+                                  'N/A'}
+                              </span>
+                            </div>
+                            <div className="detail-row">
+                              <span className="detail-label">Gender:</span>
+                              <span className="detail-value">
+                                {selectedEmployeeDetails.memberGender || 'N/A'}
+                              </span>
+                            </div>
+                            <div className="detail-row">
+                              <span className="detail-label">Phone Number:</span>
+                              <span className="detail-value">
+                                {selectedEmployeeDetails.memberPhoneNumber ? (
+                                  <a href={`tel:${selectedEmployeeDetails.memberPhoneNumber}`}>
+                                    {selectedEmployeeDetails.memberPhoneNumber}
+                                  </a>
+                                ) : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="detail-row">
+                              <span className="detail-label">Address:</span>
+                              <span className="detail-value">
+                                {selectedEmployeeDetails.memberAddress || 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {!selectedEmployeeDetails.memberFirstName && (
+                          <div style={{ textAlign: 'center', marginTop: '20px', color: '#999' }}>
+                            <p>No family member information available.</p>
+                          </div>
+                        )}
+                      </TabPane>
+             <TabPane tab="Salary Adjustment" key="6">
+                <div className="salary-adjustment-container">
+                  <div className="salary-section">
+                    <div className="salary-header">
+                      <h3 className="salary-title">SALARY ADJUSTMENT</h3>
+                      <div className="current-salary">
+                        <Form.Item
+                          label="Current Salary"
+                          name="currentSalary"
+                          className="form-item"
+                          rules={[{ required: true, message: 'Please enter amount' }]}
+                        >
+                          <Input prefix="₱" type="number" placeholder="0.00" />
+                        </Form.Item>
+                      </div>
+                    </div>
+
+                    <div className="adjustment-form">
+                      <div className="form-row">
+                        <Form.Item
+                          label="Adjustment Type"
+                          name="adjustmentType"
+                          className="form-item-full"
+                        >
+                          <Select placeholder="Select adjustment type">
+                            <Option value="regular">Regular Adjustment</Option>
+                            <Option value="promotion">Promotion</Option>
+                            <Option value="bonus">Bonus</Option>
+                            <Option value="evaluation">Evaluation Bonus</Option>
+                            <Option value="allowance">Allowance</Option>
+                            <Option value="deduction">Deduction</Option>
+                          </Select>
+                        </Form.Item>
+                      </div>
+
+                      <div className="form-row">
+                        <Form.Item
+                          label="Amount"
+                          name="adjustmentAmount"
+                          className="form-item"
+                          rules={[{ required: true, message: 'Please enter amount' }]}
+                        >
+                          <Input prefix="₱" type="number" placeholder="0.00" />
+                        </Form.Item>
+
+                        <Form.Item
+                          label="Effective Date"
+                          name="effectiveDate"
+                          className="form-item"
+                          rules={[{ required: true, message: 'Please select effective date' }]}
+                        >
+                          <DatePicker style={{ width: '100%' }} />
+                        </Form.Item>
+                      </div>
+
+                      <Form.Item
+                        label="Reason/Description"
+                        name="adjustmentReason"
+                        className="form-item-full"
+                      >
+                        <Input.TextArea 
+                          rows={3} 
+                          placeholder="Enter reason for salary adjustment..."
+                        />
+                      </Form.Item>
+
+                      
+                    </div>
+
+                    <div className="salary-actions">
+                      <Button type="primary" className="submit-salary-adjustment">
+                        Submit Salary Adjustment
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Divider />
+
+                  <div className="salary-history">
+                    <h4 className="history-title">Salary Adjustment History</h4>
+                    <div className="history-placeholder">
+                      <p>No salary adjustments recorded yet.</p>
+                    </div>
+                    {/* You can add a table here later to display salary history */}
+                  </div>
+                </div>
               </TabPane>
             </Tabs>
           </>
