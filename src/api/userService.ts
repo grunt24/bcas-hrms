@@ -1,5 +1,10 @@
 import { tblUsersTypes } from "../types/tblUsers";
 import axios from 'axios';
+import {
+  ForgotPasswordDTO,
+  ResetPasswordDTO,
+  UserChangePasswordDTO
+} from "../types/auth";
 
 const API_URL = 'https://localhost:7245/api';
 
@@ -90,6 +95,40 @@ const UserService = {
       return response.data;
     } catch (error) {
       console.error('Error creating user for employee:', error);
+      throw error;
+    }
+  },
+  //Forgot Password
+    forgotPassword: async (email: string): Promise<any> => {
+    try {
+      const dto: ForgotPasswordDTO = { email };
+      const response = await axios.post(`${API_URL}/Users/forgot-password`, dto);
+      return response.data;
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      throw error;
+    }
+  },
+
+  // Reset Password via token
+  resetPassword: async (token: string, newPassword: string): Promise<any> => {
+    try {
+      const dto: ResetPasswordDTO = { token, newPassword };
+      const response = await axios.post(`${API_URL}/Users/reset-password`, dto);
+      return response.data;
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      throw error;
+    }
+  },
+
+  // Change Password
+  changePassword: async (dto: UserChangePasswordDTO): Promise<any> => {
+    try {
+      const response = await axios.post(`${API_URL}/Users/change-password`, dto);
+      return response.data;
+    } catch (error) {
+      console.error("Error changing password:", error);
       throw error;
     }
   }

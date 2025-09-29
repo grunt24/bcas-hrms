@@ -13,12 +13,16 @@ import ContractPage from "./pages/ContractPage";
 import EvaluationPage from "./pages/EvaluationPage.tsx";
 import ProtectedRoute from "./context/ProtectedRoute.tsx";
 import { ROLES } from "./types/auth";
+import ForgotPasswordPage from "./pages/ForgotPassword.tsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.tsx";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
           element={
             <ProtectedRoute>

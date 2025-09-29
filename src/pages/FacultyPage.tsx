@@ -18,9 +18,9 @@ import {
   Menu,
   Divider,
 } from "antd";
-import { 
-  PlusOutlined, 
-  DeleteOutlined, 
+import {
+  PlusOutlined,
+  DeleteOutlined,
   EditOutlined,
   UserOutlined,
   PrinterOutlined,
@@ -51,67 +51,84 @@ const EDUCATIONAL_ATTAINMENT_OPTIONS = [
   "Bachelor's Degree",
   "Master's Degree",
   "Doctorate",
-  "Post-Doctoral"
+  "Post-Doctoral",
 ];
 
 // Excel export utility functions
 const exportToExcel = (data: any[], filename: string, category?: string) => {
   const headers = [
-    'Employee ID',
-    'First Name',
-    'Last Name',
-    'Gender',
-    'Date of Birth',
-    'Email',
-    'Phone Number',
-    'Address',
-    'Department',
-    'Position',
-    'Employment Status',
-    'Hire Date',
-    'Family Member First Name',
-    'Family Member Last Name',
-    'Family Member Gender',
-    'Family Member Address',
-    'Family Member Phone',
-    'Educational Attainment',
-    'Institution Name',
-    'Year Graduated',
-    'Course Name'
-  ].join(',');
+    "Employee ID",
+    "First Name",
+    "Last Name",
+    "Gender",
+    "Date of Birth",
+    "Email",
+    "Phone Number",
+    "Address",
+    "Department",
+    "Position",
+    "Employment Status",
+    "Hire Date",
+    "Family Member First Name",
+    "Family Member Last Name",
+    "Family Member Gender",
+    "Family Member Address",
+    "Family Member Phone",
+    "Educational Attainment",
+    "Institution Name",
+    "Year Graduated",
+    "Course Name",
+  ].join(",");
 
-  const rows = data.map(employee => [
-    `"${employee.formattedId}"`,
-    `"${employee.firstName || ''}"`,
-    `"${employee.lastName || ''}"`,
-    `"${employee.gender || ''}"`,
-    `"${employee.dateOfBirth ? moment(employee.dateOfBirth).format('YYYY-MM-DD') : ''}"`,
-    `"${employee.email || ''}"`,
-    `"${employee.phoneNumber || ''}"`,
-    `"${employee.address || ''}"`,
-    `"${employee.departmentName || ''}"`,
-    `"${employee.positionName || ''}"`,
-    `"${employee.employmentStatus || ''}"`,
-    `"${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}"`,
-    `"${employee.memberFirstName || ''}"`,
-    `"${employee.memberLastName || ''}"`,
-    `"${employee.memberGender || ''}"`,
-    `"${employee.memberAddress || ''}"`,
-    `"${employee.memberPhoneNumber || ''}"`,
-    `"${employee.educationalAttainment || ''}"`,
-    `"${employee.institutionName || ''}"`,
-    `"${employee.yearGraduated ? moment(employee.yearGraduated).format('YYYY') : ''}"`,
-     `"${employee.courseName || ''}"`,
-  ].join(','));
+  const rows = data.map((employee) =>
+    [
+      `"${employee.formattedId}"`,
+      `"${employee.firstName || ""}"`,
+      `"${employee.lastName || ""}"`,
+      `"${employee.gender || ""}"`,
+      `"${
+        employee.dateOfBirth
+          ? moment(employee.dateOfBirth).format("YYYY-MM-DD")
+          : ""
+      }"`,
+      `"${employee.email || ""}"`,
+      `"${employee.phoneNumber || ""}"`,
+      `"${employee.address || ""}"`,
+      `"${employee.departmentName || ""}"`,
+      `"${employee.positionName || ""}"`,
+      `"${employee.employmentStatus || ""}"`,
+      `"${
+        employee.hireDate ? moment(employee.hireDate).format("YYYY-MM-DD") : ""
+      }"`,
+      `"${employee.memberFirstName || ""}"`,
+      `"${employee.memberLastName || ""}"`,
+      `"${employee.memberGender || ""}"`,
+      `"${employee.memberAddress || ""}"`,
+      `"${employee.memberPhoneNumber || ""}"`,
+      `"${employee.educationalAttainment || ""}"`,
+      `"${employee.institutionName || ""}"`,
+      `"${
+        employee.yearGraduated
+          ? moment(employee.yearGraduated).format("YYYY")
+          : ""
+      }"`,
+      `"${employee.courseName || ""}"`,
+    ].join(",")
+  );
 
-  const csvContent = [headers, ...rows].join('\n');
+  const csvContent = [headers, ...rows].join("\n");
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}${category ? `_${category}` : ''}_${moment().format('YYYY-MM-DD')}.csv`);
-  link.style.visibility = 'hidden';
+  link.setAttribute("href", url);
+  link.setAttribute(
+    "download",
+    `${filename}${category ? `_${category}` : ""}_${moment().format(
+      "YYYY-MM-DD"
+    )}.csv`
+  );
+  link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -126,10 +143,13 @@ const FacultyPage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isUserModalVisible, setIsUserModalVisible] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  );
   const [userForm] = Form.useForm();
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Employee | null>(null);
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] =
+    useState<Employee | null>(null);
   const screens = useBreakpoint();
   const [departments, setDepartments] = useState<DepartmentTypes[]>([]);
   const [positions, setPositions] = useState<PositionTypes[]>([]);
@@ -137,33 +157,41 @@ const FacultyPage: React.FC = () => {
   const isAdmin = user?.roleId === ROLES.Admin;
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const formatEmployeeId = (employeeId: number | string | undefined, hireDate?: string | Date): string => {
-    if (!employeeId) return 'N/A';
-    
-    if (typeof employeeId === 'string' && employeeId.includes('-')) {
+  const formatEmployeeId = (
+    employeeId: number | string | undefined,
+    hireDate?: string | Date
+  ): string => {
+    if (!employeeId) return "N/A";
+
+    if (typeof employeeId === "string" && employeeId.includes("-")) {
       return employeeId;
     }
-    
-    const idNumber = typeof employeeId === 'string' ? parseInt(employeeId) : employeeId;
-    
+
+    const idNumber =
+      typeof employeeId === "string" ? parseInt(employeeId) : employeeId;
+
     let year: number;
     if (hireDate) {
       year = moment(hireDate).year();
     } else {
       year = new Date().getFullYear();
     }
-    
-    const formattedId = idNumber.toString().padStart(3, '0');
+
+    const formattedId = idNumber.toString().padStart(3, "0");
     return `${year}-${formattedId}`;
   };
 
   const getEnhancedFacultyData = () => {
-    return facultyData.map(employee => ({
+    return facultyData.map((employee) => ({
       ...employee,
       formattedId: formatEmployeeId(employee.employeeID, employee.hireDate),
-      departmentName: departments.find(d => d.departmentID === employee.departmentID)?.departmentName || 'N/A',
-      positionName: positions.find(p => p.positionID === employee.positionID)?.positionName || 'N/A',
-      gender: employee.gender || 'N/A'
+      departmentName:
+        departments.find((d) => d.departmentID === employee.departmentID)
+          ?.departmentName || "N/A",
+      positionName:
+        positions.find((p) => p.positionID === employee.positionID)
+          ?.positionName || "N/A",
+      gender: employee.gender || "N/A",
     }));
   };
 
@@ -173,15 +201,17 @@ const FacultyPage: React.FC = () => {
     let title = "Faculty Members";
 
     if (category && categoryValue) {
-      dataToPrint = enhancedData.filter(employee => 
-        employee[category as keyof typeof employee]?.toString() === categoryValue
+      dataToPrint = enhancedData.filter(
+        (employee) =>
+          employee[category as keyof typeof employee]?.toString() ===
+          categoryValue
       );
       title = `Faculty Members - ${categoryValue}`;
     }
 
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      message.error('Popup blocked! Please allow popups for printing.');
+      message.error("Popup blocked! Please allow popups for printing.");
       return;
     }
 
@@ -208,7 +238,9 @@ const FacultyPage: React.FC = () => {
       <body>
         <div class="print-header">
           <div class="print-title">${title}</div>
-          <div class="print-date">Generated on: ${moment().format('MMMM D, YYYY h:mm A')}</div>
+          <div class="print-date">Generated on: ${moment().format(
+            "MMMM D, YYYY h:mm A"
+          )}</div>
         </div>
         <table>
           <thead>
@@ -227,21 +259,33 @@ const FacultyPage: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            ${dataToPrint.map(employee => `
+            ${dataToPrint
+              .map(
+                (employee) => `
               <tr>
                 <td>${employee.formattedId}</td>
-                <td>${employee.firstName || ''}</td>
-                <td>${employee.lastName || ''}</td>
-                <td>${employee.gender || ''}</td>
-                <td>${employee.email || ''}</td>
+                <td>${employee.firstName || ""}</td>
+                <td>${employee.lastName || ""}</td>
+                <td>${employee.gender || ""}</td>
+                <td>${employee.email || ""}</td>
                 <td>${employee.departmentName}</td>
                 <td>${employee.positionName}</td>
-                <td>${employee.employmentStatus || ''}</td>
-                <td>${employee.hireDate ? moment(employee.hireDate).format('YYYY-MM-DD') : ''}</td>
-                <td>${employee.memberFirstName ? `${employee.memberFirstName} ${employee.memberLastName}` : 'N/A'}</td>
-                <td>${employee.memberGender || 'N/A'}</td>
+                <td>${employee.employmentStatus || ""}</td>
+                <td>${
+                  employee.hireDate
+                    ? moment(employee.hireDate).format("YYYY-MM-DD")
+                    : ""
+                }</td>
+                <td>${
+                  employee.memberFirstName
+                    ? `${employee.memberFirstName} ${employee.memberLastName}`
+                    : "N/A"
+                }</td>
+                <td>${employee.memberGender || "N/A"}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join("")}
           </tbody>
         </table>
         <div class="no-print" style="margin-top: 20px; text-align: center;">
@@ -262,10 +306,12 @@ const FacultyPage: React.FC = () => {
     let filename = "Faculty_Members";
 
     if (category && categoryValue) {
-      dataToExport = enhancedData.filter(employee => 
-        employee[category as keyof typeof employee]?.toString() === categoryValue
+      dataToExport = enhancedData.filter(
+        (employee) =>
+          employee[category as keyof typeof employee]?.toString() ===
+          categoryValue
       );
-      filename = `Faculty_Members_${categoryValue.replace(/\s+/g, '_')}`;
+      filename = `Faculty_Members_${categoryValue.replace(/\s+/g, "_")}`;
     }
 
     exportToExcel(dataToExport, filename, categoryValue);
@@ -275,10 +321,18 @@ const FacultyPage: React.FC = () => {
   const getUniqueCategories = () => {
     const enhancedData = getEnhancedFacultyData();
 
-    const positions = [...new Set(enhancedData.map(e => e.positionName))].filter(Boolean);
-    const departments = [...new Set(enhancedData.map(e => e.departmentName))].filter(Boolean);
-    const employmentStatuses = [...new Set(enhancedData.map(e => e.employmentStatus))].filter(Boolean);
-    const genders = [...new Set(enhancedData.map(e => e.gender))].filter(Boolean);
+    const positions = [
+      ...new Set(enhancedData.map((e) => e.positionName)),
+    ].filter(Boolean);
+    const departments = [
+      ...new Set(enhancedData.map((e) => e.departmentName)),
+    ].filter(Boolean);
+    const employmentStatuses = [
+      ...new Set(enhancedData.map((e) => e.employmentStatus)),
+    ].filter(Boolean);
+    const genders = [...new Set(enhancedData.map((e) => e.gender))].filter(
+      Boolean
+    );
 
     return { positions, departments, employmentStatuses, genders };
   };
@@ -287,14 +341,14 @@ const FacultyPage: React.FC = () => {
     positions: uniquePositions,
     departments: uniqueDepartments,
     employmentStatuses: uniqueStatuses,
-    genders: uniqueGenders
+    genders: uniqueGenders,
   } = getUniqueCategories();
 
   const exportMenu = (
     <Menu>
       <Menu.SubMenu key="position" title="Export by Position">
-        {uniquePositions.map(position => (
-          <Menu.Item 
+        {uniquePositions.map((position) => (
+          <Menu.Item
             key={`pos-${position}`}
             onClick={() => handleExportToExcel("positionName", position)}
           >
@@ -304,8 +358,8 @@ const FacultyPage: React.FC = () => {
       </Menu.SubMenu>
 
       <Menu.SubMenu key="department" title="Export by Department">
-        {uniqueDepartments.map(department => (
-          <Menu.Item 
+        {uniqueDepartments.map((department) => (
+          <Menu.Item
             key={`dept-${department}`}
             onClick={() => handleExportToExcel("departmentName", department)}
           >
@@ -315,8 +369,8 @@ const FacultyPage: React.FC = () => {
       </Menu.SubMenu>
 
       <Menu.SubMenu key="status" title="Export by Employment Status">
-        {uniqueStatuses.map(status => (
-          <Menu.Item 
+        {uniqueStatuses.map((status) => (
+          <Menu.Item
             key={`status-${status}`}
             onClick={() => handleExportToExcel("employmentStatus", status)}
           >
@@ -326,7 +380,7 @@ const FacultyPage: React.FC = () => {
       </Menu.SubMenu>
 
       <Menu.SubMenu key="gender" title="Export by Gender">
-        {uniqueGenders.map(gender => (
+        {uniqueGenders.map((gender) => (
           <Menu.Item
             key={`gender-${gender}`}
             onClick={() => handleExportToExcel("gender", gender)}
@@ -347,40 +401,40 @@ const FacultyPage: React.FC = () => {
   const printMenu = (
     <Menu>
       <Menu.SubMenu key="position" title="Print by Position">
-        {uniquePositions.map(position => (
-          <Menu.Item 
+        {uniquePositions.map((position) => (
+          <Menu.Item
             key={`print-pos-${position}`}
-            onClick={() => handlePrint('positionName', position)}
+            onClick={() => handlePrint("positionName", position)}
           >
             {position}
           </Menu.Item>
         ))}
       </Menu.SubMenu>
       <Menu.SubMenu key="department" title="Print by Department">
-        {uniqueDepartments.map(department => (
-          <Menu.Item 
+        {uniqueDepartments.map((department) => (
+          <Menu.Item
             key={`print-dept-${department}`}
-            onClick={() => handlePrint('departmentName', department)}
+            onClick={() => handlePrint("departmentName", department)}
           >
             {department}
           </Menu.Item>
         ))}
       </Menu.SubMenu>
       <Menu.SubMenu key="status" title="Print by Employment Status">
-        {uniqueStatuses.map(status => (
-          <Menu.Item 
+        {uniqueStatuses.map((status) => (
+          <Menu.Item
             key={`print-status-${status}`}
-            onClick={() => handlePrint('employmentStatus', status)}
+            onClick={() => handlePrint("employmentStatus", status)}
           >
             {status}
           </Menu.Item>
         ))}
       </Menu.SubMenu>
       <Menu.SubMenu key="gender" title="Print by Gender">
-        {uniqueGenders.map(gender => (
+        {uniqueGenders.map((gender) => (
           <Menu.Item
             key={`print-gender-${gender}`}
-            onClick={() => handlePrint('gender', gender)}
+            onClick={() => handlePrint("gender", gender)}
           >
             {gender}
           </Menu.Item>
@@ -398,17 +452,19 @@ const FacultyPage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const [allEmployees, depts, pos] = await Promise.all([
           EmployeeService.getAll(),
           DepartmentService.getAll(),
-          PositionService.getAll()
+          PositionService.getAll(),
         ]);
-        
-        const employees = isAdmin 
+
+        const employees = isAdmin
           ? allEmployees
-          : allEmployees.filter(emp => emp.employeeID === (user?.employeeId || 0));
-        
+          : allEmployees.filter(
+              (emp) => emp.employeeID === (user?.employeeId || 0)
+            );
+
         setFacultyData(employees);
         setDepartments(depts);
         setPositions(pos);
@@ -429,7 +485,7 @@ const FacultyPage: React.FC = () => {
       message.warning("You don't have permission to add new faculty members");
       return;
     }
-    
+
     form.resetFields();
     form.setFieldsValue({
       employmentStatus: "Hired",
@@ -461,7 +517,7 @@ const FacultyPage: React.FC = () => {
       positionID: record.positionID ? Number(record.positionID) : null,
       employmentStatus: record.employmentStatus || "Hired",
       hireDate: record.hireDate ? moment(record.hireDate) : moment(),
-      
+
       // Family member fields
       memberFirstName: record.memberFirstName,
       memberLastName: record.memberLastName,
@@ -514,23 +570,23 @@ const FacultyPage: React.FC = () => {
 
       const formattedValues = {
         ...values,
-        dateOfBirth: values.dateOfBirth 
-          ? moment(values.dateOfBirth).format('YYYY-MM-DD') 
+        dateOfBirth: values.dateOfBirth
+          ? moment(values.dateOfBirth).format("YYYY-MM-DD")
           : null,
-        hireDate: values.hireDate 
-          ? moment(values.hireDate).format('YYYY-MM-DD') 
-          : moment().format('YYYY-MM-DD'),
+        hireDate: values.hireDate
+          ? moment(values.hireDate).format("YYYY-MM-DD")
+          : moment().format("YYYY-MM-DD"),
         departmentID: Number(values.departmentID),
         positionID: Number(values.positionID),
-        yearGraduated: values.yearGraduated 
-        ? moment(values.yearGraduated).format('YYYY-MM-DD') 
-        : null,
-        durationStart: values.durationStart 
-        ? moment(values.durationStart).format('YYYY-MM-DD') 
-        : null,
-        durationEnd: values.durationEnd 
-        ? moment(values.durationEnd).format('YYYY-MM-DD') 
-        : null,
+        yearGraduated: values.yearGraduated
+          ? moment(values.yearGraduated).format("YYYY-MM-DD")
+          : null,
+        durationStart: values.durationStart
+          ? moment(values.durationStart).format("YYYY-MM-DD")
+          : null,
+        durationEnd: values.durationEnd
+          ? moment(values.durationEnd).format("YYYY-MM-DD")
+          : null,
       };
 
       if (editingId) {
@@ -566,7 +622,7 @@ const FacultyPage: React.FC = () => {
     if (e) {
       e.stopPropagation();
     }
-    
+
     if (!isAdmin) {
       message.warning("You don't have permission to create user accounts");
       return;
@@ -582,7 +638,9 @@ const FacultyPage: React.FC = () => {
       username: `${record.firstName?.toLowerCase() || ""}${
         record.lastName?.toLowerCase() || ""
       }`,
-      positions: positions.find(p => p.positionID === record.positionID)?.positionName || 3,
+      positions:
+        positions.find((p) => p.positionID === record.positionID)
+          ?.positionName || 3,
     });
 
     setIsUserModalVisible(true);
@@ -622,7 +680,7 @@ const FacultyPage: React.FC = () => {
       title: "Employee ID",
       dataIndex: "employeeID",
       key: "employeeID",
-      responsive: ['sm'],
+      responsive: ["sm"],
       render: (id: number, record: Employee) => (
         <span className="employee-id">
           {formatEmployeeId(id, record.hireDate)}
@@ -632,7 +690,7 @@ const FacultyPage: React.FC = () => {
     {
       title: "Name",
       key: "name",
-      responsive: ['xs', 'sm'],
+      responsive: ["xs", "sm"],
       render: (_, record) => (
         <div className="name-cell">
           <div className="name-line">{record.firstName}</div>
@@ -644,43 +702,49 @@ const FacultyPage: React.FC = () => {
       title: "First Name",
       dataIndex: ["firstName"],
       key: "firstName",
-      responsive: ['md'],
+      responsive: ["md"],
     },
     {
       title: "Last Name",
       dataIndex: ["lastName"],
       key: "lastName",
-      responsive: ['md'],
+      responsive: ["md"],
     },
     {
       title: "Gender",
       dataIndex: ["gender"],
       key: "gender",
-      responsive: ['sm'],
+      responsive: ["sm"],
     },
     {
       title: "Department",
       dataIndex: "departmentID",
       key: "departmentID",
-      responsive: ['sm'],
+      responsive: ["sm"],
       render: (deptId) => {
-        return departments.find((d) => d.departmentID === deptId)?.departmentName || deptId;
+        return (
+          departments.find((d) => d.departmentID === deptId)?.departmentName ||
+          deptId
+        );
       },
     },
     {
       title: "Position",
       dataIndex: ["positionID"],
       key: "positionID",
-      responsive: ['sm'],
+      responsive: ["sm"],
       render: (positionId) => {
-        return positions.find((p) => p.positionID === positionId)?.positionName || positionId;
+        return (
+          positions.find((p) => p.positionID === positionId)?.positionName ||
+          positionId
+        );
       },
     },
     {
       title: "Email",
       dataIndex: "email",
       key: "email",
-      responsive: ['md'],
+      responsive: ["md"],
       render: (email) => (
         <span className="email-cell">
           {screens.md ? email : `${email.substring(0, 10)}...`}
@@ -691,22 +755,25 @@ const FacultyPage: React.FC = () => {
       title: "Status",
       dataIndex: "employmentStatus",
       key: "employmentStatus",
-      responsive: ['sm'],
+      responsive: ["sm"],
     },
     {
       title: "Hire Date",
       dataIndex: "hireDate",
       key: "hireDate",
-      responsive: ['md'],
-      render: (date) => moment(date).format(screens.md ? 'YYYY-MM-DD' : 'YY-MM-DD'),
+      responsive: ["md"],
+      render: (date) =>
+        moment(date).format(screens.md ? "YYYY-MM-DD" : "YY-MM-DD"),
     },
     {
       title: "Family Member",
       key: "familyMember",
-      responsive: ['lg'],
+      responsive: ["lg"],
       render: (_, record) => (
         <span>
-          {record.memberFirstName ? `${record.memberFirstName} ${record.memberLastName}` : 'N/A'}
+          {record.memberFirstName
+            ? `${record.memberFirstName} ${record.memberLastName}`
+            : "N/A"}
         </span>
       ),
     },
@@ -748,10 +815,10 @@ const FacultyPage: React.FC = () => {
                 okText="Yes"
                 cancelText="No"
               >
-                <Button 
-                  type="link" 
-                  danger 
-                  icon={<DeleteOutlined />} 
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
                   className="action-button"
                   aria-label="Delete"
                   onClick={(e) => e.stopPropagation()}
@@ -783,8 +850,12 @@ const FacultyPage: React.FC = () => {
         size={screens.xs ? "small" : "middle"}
       />
       <Space>
-        <Dropdown overlay={printMenu} placement="bottomRight" trigger={['click']}>
-          <Button 
+        <Dropdown
+          overlay={printMenu}
+          placement="bottomRight"
+          trigger={["click"]}
+        >
+          <Button
             icon={<PrinterOutlined />}
             className="export-button"
             size={screens.xs ? "small" : "middle"}
@@ -792,9 +863,13 @@ const FacultyPage: React.FC = () => {
             {screens.sm ? "Print" : ""}
           </Button>
         </Dropdown>
-        
-        <Dropdown overlay={exportMenu} placement="bottomRight" trigger={['click']}>
-          <Button 
+
+        <Dropdown
+          overlay={exportMenu}
+          placement="bottomRight"
+          trigger={["click"]}
+        >
+          <Button
             icon={<FileExcelOutlined />}
             type="primary"
             className="export-button"
@@ -803,7 +878,7 @@ const FacultyPage: React.FC = () => {
             {screens.sm ? "Export" : ""}
           </Button>
         </Dropdown>
-        
+
         {isAdmin && (
           <Button
             type="primary"
@@ -821,19 +896,15 @@ const FacultyPage: React.FC = () => {
 
   return (
     <div className="faculty-page-container" ref={tableRef}>
-      <Card
-        title="Faculty Members"
-        className="faculty-card"
-        extra={cardExtra}
-      >
+      <Card title="Faculty Members" className="faculty-card" extra={cardExtra}>
         <Table
           columns={columns}
           dataSource={filteredData}
           rowKey="employeeID"
-          pagination={{ 
+          pagination={{
             pageSize: 10,
             showSizeChanger: !screens.xs,
-            size: screens.xs ? "small" : "default"
+            size: screens.xs ? "small" : "default",
           }}
           loading={loading}
           scroll={{ x: true }}
@@ -850,7 +921,11 @@ const FacultyPage: React.FC = () => {
 
       {/* Edit/Create Faculty Modal */}
       <Modal
-        title={editingId ? `Edit Info: ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}` : "Add New Faculty Member"}
+        title={
+          editingId
+            ? `Edit Info: ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}`
+            : "Add New Faculty Member"
+        }
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -858,11 +933,14 @@ const FacultyPage: React.FC = () => {
           form.resetFields();
         }}
         footer={[
-          <Button key="cancel" onClick={() => {
-            setIsModalVisible(false);
-            setSelectedEmployee(null);
-            form.resetFields();
-          }}>
+          <Button
+            key="cancel"
+            onClick={() => {
+              setIsModalVisible(false);
+              setSelectedEmployee(null);
+              form.resetFields();
+            }}
+          >
             Cancel
           </Button>,
           <Button
@@ -885,7 +963,7 @@ const FacultyPage: React.FC = () => {
             </Form.Item>
 
             <Divider orientation="left">Personal Information</Divider>
-            
+
             <div className="form-row">
               <Form.Item
                 name="firstName"
@@ -923,7 +1001,9 @@ const FacultyPage: React.FC = () => {
               <Form.Item
                 name="dateOfBirth"
                 label="Date of Birth"
-                rules={[{ required: true, message: "Please select date of birth" }]}
+                rules={[
+                  { required: true, message: "Please select date of birth" },
+                ]}
                 className="form-item"
               >
                 <DatePicker style={{ width: "100%" }} />
@@ -946,7 +1026,9 @@ const FacultyPage: React.FC = () => {
               <Form.Item
                 name="phoneNumber"
                 label="Phone Number"
-                rules={[{ required: true, message: "Please enter phone number" }]}
+                rules={[
+                  { required: true, message: "Please enter phone number" },
+                ]}
                 className="form-item"
               >
                 <Input />
@@ -967,7 +1049,9 @@ const FacultyPage: React.FC = () => {
               <Form.Item
                 name="departmentID"
                 label="Department"
-                rules={[{ required: isAdmin, message: "Please select department" }]}
+                rules={[
+                  { required: isAdmin, message: "Please select department" },
+                ]}
                 className="form-item"
               >
                 <Select disabled={!isAdmin}>
@@ -982,12 +1066,17 @@ const FacultyPage: React.FC = () => {
               <Form.Item
                 name="positionID"
                 label="Position"
-                rules={[{ required: isAdmin, message: "Please select position" }]}
+                rules={[
+                  { required: isAdmin, message: "Please select position" },
+                ]}
                 className="form-item"
               >
                 <Select disabled={!isAdmin}>
-                  {positions.map(position => (
-                    <Option key={position.positionID} value={position.positionID}>
+                  {positions.map((position) => (
+                    <Option
+                      key={position.positionID}
+                      value={position.positionID}
+                    >
                       {position.positionName}
                     </Option>
                   ))}
@@ -1018,7 +1107,9 @@ const FacultyPage: React.FC = () => {
                 label="Hire Date"
                 initialValue={moment()}
                 className="form-item"
-                rules={[{ required: isAdmin, message: "Please select hire date" }]}
+                rules={[
+                  { required: isAdmin, message: "Please select hire date" },
+                ]}
               >
                 <DatePicker style={{ width: "100%" }} disabled={!isAdmin} />
               </Form.Item>
@@ -1027,14 +1118,13 @@ const FacultyPage: React.FC = () => {
             <Divider orientation="left">Educational Attainment</Divider>
 
             <div className="form-row">
-              
               <Form.Item
                 name="educationalAttainment"
                 label="Educational Attainment"
                 className="form-item"
               >
                 <Select placeholder="Select Educational Attainment">
-                  {EDUCATIONAL_ATTAINMENT_OPTIONS.map(level => (
+                  {EDUCATIONAL_ATTAINMENT_OPTIONS.map((level) => (
                     <Option key={level} value={level}>
                       {level}
                     </Option>
@@ -1047,26 +1137,19 @@ const FacultyPage: React.FC = () => {
                 label="Year Graduated"
                 className="form-item"
               >
-                <DatePicker 
-                  style={{ width: "100%" }} 
+                <DatePicker
+                  style={{ width: "100%" }}
                   picker="year"
                   placeholder="Select Year"
                 />
               </Form.Item>
             </div>
 
-             <Form.Item
-              name="courseName"
-              label="Course Name"
-            >
+            <Form.Item name="courseName" label="Course Name">
               <Input placeholder="Course Name" />
             </Form.Item>
 
-
-            <Form.Item
-              name="institutionName"
-              label="Institution Name"
-            >
+            <Form.Item name="institutionName" label="Institution Name">
               <Input placeholder="Name of school or institution" />
             </Form.Item>
 
@@ -1094,7 +1177,10 @@ const FacultyPage: React.FC = () => {
                 label="Duration Start"
                 className="form-item"
               >
-                <DatePicker style={{ width: "100%" }} placeholder="Start Date" />
+                <DatePicker
+                  style={{ width: "100%" }}
+                  placeholder="Start Date"
+                />
               </Form.Item>
               <Form.Item
                 name="durationEnd"
@@ -1131,9 +1217,11 @@ const FacultyPage: React.FC = () => {
               name="summary"
               label="Summary Of Actual Duties and Responsibilities"
             >
-              <Input.TextArea rows={3} placeholder="Brief Summary of Work Experience" />
+              <Input.TextArea
+                rows={3}
+                placeholder="Brief Summary of Work Experience"
+              />
             </Form.Item>
-
 
             <Divider orientation="left">Family Member Information</Divider>
 
@@ -1177,10 +1265,7 @@ const FacultyPage: React.FC = () => {
               </Form.Item>
             </div>
 
-            <Form.Item
-              name="memberAddress"
-              label="Family Member Address"
-            >
+            <Form.Item name="memberAddress" label="Family Member Address">
               <Input.TextArea rows={2} placeholder="Address" />
             </Form.Item>
           </Form>
@@ -1249,11 +1334,11 @@ const FacultyPage: React.FC = () => {
         open={detailModalVisible}
         onCancel={() => setDetailModalVisible(false)}
         footer={[
-          <Button 
-            key="close" 
-            type="primary" 
+          <Button
+            key="close"
+            type="primary"
             onClick={() => setDetailModalVisible(false)}
-            style={{ background: '#00883e', borderColor: '#00883e' }}
+            style={{ background: "#00883e", borderColor: "#00883e" }}
           >
             Close
           </Button>,
@@ -1270,29 +1355,38 @@ const FacultyPage: React.FC = () => {
                     {selectedEmployeeDetails.firstName?.charAt(0)}
                     {selectedEmployeeDetails.lastName?.charAt(0)}
                   </div>
-                  
+
                   <div className="horizontal-details-grid">
                     <div className="detail-row">
                       <span className="detail-label">Employee ID:</span>
                       <span className="detail-value employee-id">
-                        {formatEmployeeId(selectedEmployeeDetails.employeeID, selectedEmployeeDetails.hireDate)}
+                        {formatEmployeeId(
+                          selectedEmployeeDetails.employeeID,
+                          selectedEmployeeDetails.hireDate
+                        )}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Name:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.firstName} {selectedEmployeeDetails.lastName}
+                        {selectedEmployeeDetails.firstName}{" "}
+                        {selectedEmployeeDetails.lastName}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Gender:</span>
-                      <span className="detail-value">{selectedEmployeeDetails.gender}</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.gender}
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Date of Birth:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.dateOfBirth ? 
-                          moment(selectedEmployeeDetails.dateOfBirth).format('MMMM D, YYYY') : 'N/A'}
+                        {selectedEmployeeDetails.dateOfBirth
+                          ? moment(selectedEmployeeDetails.dateOfBirth).format(
+                              "MMMM D, YYYY"
+                            )
+                          : "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
@@ -1314,395 +1408,498 @@ const FacultyPage: React.FC = () => {
                     <div className="detail-row">
                       <span className="detail-label">Department:</span>
                       <span className="detail-value">
-                        {departments.find(d => d.departmentID === selectedEmployeeDetails.departmentID)?.departmentName || 
-                         selectedEmployeeDetails.departmentID}
+                        {departments.find(
+                          (d) =>
+                            d.departmentID ===
+                            selectedEmployeeDetails.departmentID
+                        )?.departmentName ||
+                          selectedEmployeeDetails.departmentID}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Position:</span>
                       <span className="detail-value">
-                        {positions.find(p => p.positionID === selectedEmployeeDetails.positionID)?.positionName || 
-                         selectedEmployeeDetails.positionID}
+                        {positions.find(
+                          (p) =>
+                            p.positionID === selectedEmployeeDetails.positionID
+                        )?.positionName || selectedEmployeeDetails.positionID}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Status:</span>
-                      <span className="detail-value">{selectedEmployeeDetails.employmentStatus}</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.employmentStatus}
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Hire Date:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.hireDate ? 
-                          moment(selectedEmployeeDetails.hireDate).format('MMMM D, YYYY') : 'N/A'}
+                        {selectedEmployeeDetails.hireDate
+                          ? moment(selectedEmployeeDetails.hireDate).format(
+                              "MMMM D, YYYY"
+                            )
+                          : "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Address:</span>
-                      <span className="detail-value">{selectedEmployeeDetails.address}</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.address}
+                      </span>
                     </div>
                   </div>
                 </div>
               </TabPane>
               <TabPane tab="Educational Attainment" key="2">
-                <div className="horizontal-details-container">                 
+                <div className="horizontal-details-container">
                   <div className="horizontal-details-grid">
                     <div className="detail-row">
-                      <span className="detail-label">Educational Attainment:</span>
+                      <span className="detail-label">
+                        Educational Attainment:
+                      </span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.educationalAttainment || 'N/A'}
+                        {selectedEmployeeDetails.educationalAttainment || "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Year Graduated:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.yearGraduated ? 
-                          moment(selectedEmployeeDetails.yearGraduated).format('YYYY') : 'N/A'}
+                        {selectedEmployeeDetails.yearGraduated
+                          ? moment(
+                              selectedEmployeeDetails.yearGraduated
+                            ).format("YYYY")
+                          : "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Institution Name:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.institutionName || 'N/A'}
+                        {selectedEmployeeDetails.institutionName || "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Course:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.courseName || 'N/A'}
+                        {selectedEmployeeDetails.courseName || "N/A"}
                       </span>
                     </div>
                   </div>
                 </div>
-                
+
                 {!selectedEmployeeDetails.educationalAttainment && (
-                  <div style={{ textAlign: 'center', marginTop: '20px', color: '#999' }}>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      marginTop: "20px",
+                      color: "#999",
+                    }}
+                  >
                     <p>No educational information available.</p>
                   </div>
                 )}
               </TabPane>
               <TabPane tab="Work Experience" key="3">
-                               <div className="horizontal-details-container">                 
+                <div className="horizontal-details-container">
                   <div className="horizontal-details-grid">
                     <div className="detail-row">
                       <span className="detail-label">Previous Position:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.previousPosition || 'N/A'}
+                        {selectedEmployeeDetails.previousPosition || "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Office Name:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.officeName || 'N/A'}
+                        {selectedEmployeeDetails.officeName || "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Duration:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.durationStart ? 
-                          moment(selectedEmployeeDetails.durationStart).format('YYYY-MM-DD') : 'N/A -'} || {selectedEmployeeDetails.durationEnd ? 
-                          moment(selectedEmployeeDetails.durationEnd).format('YYYY-MM-DD') : ' N/A'}
+                        {selectedEmployeeDetails.durationStart
+                          ? moment(
+                              selectedEmployeeDetails.durationStart
+                            ).format("YYYY-MM-DD")
+                          : "N/A -"}{" "}
+                        ||{" "}
+                        {selectedEmployeeDetails.durationEnd
+                          ? moment(selectedEmployeeDetails.durationEnd).format(
+                              "YYYY-MM-DD"
+                            )
+                          : " N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Agency Name:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.agencyName || 'N/A'}
+                        {selectedEmployeeDetails.agencyName || "N/A"}
                       </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Supervisor:</span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.supervisor || 'N/A'}
+                        {selectedEmployeeDetails.supervisor || "N/A"}
                       </span>
                     </div>
-                     <div className="detail-row">
-                      <span className="detail-label">List of Accomplishments:</span>
+                    <div className="detail-row">
+                      <span className="detail-label">
+                        List of Accomplishments:
+                      </span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.accomplishment || 'N/A'}
+                        {selectedEmployeeDetails.accomplishment || "N/A"}
                       </span>
                     </div>
-                     <div className="detail-row">
-                      <span className="detail-label">Summary of Actual Duties:</span>
+                    <div className="detail-row">
+                      <span className="detail-label">
+                        Summary of Actual Duties:
+                      </span>
                       <span className="detail-value">
-                        {selectedEmployeeDetails.summary || 'N/A'}
+                        {selectedEmployeeDetails.summary || "N/A"}
                       </span>
                     </div>
                   </div>
                 </div>
-                
+
                 {!selectedEmployeeDetails.educationalAttainment && (
-                  <div style={{ textAlign: 'center', marginTop: '20px', color: '#999' }}>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      marginTop: "20px",
+                      color: "#999",
+                    }}
+                  >
                     <p>No educational information available.</p>
                   </div>
                 )}
               </TabPane>
               <TabPane tab="Requirements | Records" key="4">
-  <div className="requirements-container">
-    <div className="requirement-section">
-      <div className="requirement-item">
-        <div className="requirement-label">PSA Birth Certificate:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="psa-birth-certificate"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('psa-birth-certificate')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                <div className="requirements-container">
+                  <div className="requirement-section">
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        PSA Birth Certificate:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="psa-birth-certificate"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document
+                              .getElementById("psa-birth-certificate")
+                              ?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Marriage Certificate:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="marriage-certificate"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('marriage-certificate')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        Marriage Certificate:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="marriage-certificate"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document
+                              .getElementById("marriage-certificate")
+                              ?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Passport-Sized Photographs:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="passport-photos"
-            className="file-input"
-            accept=".jpg,.jpeg,.png"
-            multiple
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('passport-photos')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        Passport-Sized Photographs:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="passport-photos"
+                          className="file-input"
+                          accept=".jpg,.jpeg,.png"
+                          multiple
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document.getElementById("passport-photos")?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Educational and Professional Credentials:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="educational-credentials"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            multiple
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('educational-credentials')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        Educational and Professional Credentials:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="educational-credentials"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          multiple
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document
+                              .getElementById("educational-credentials")
+                              ?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Training Certificates:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="training-certificates"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            multiple
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('training-certificates')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        Training Certificates:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="training-certificates"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          multiple
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document
+                              .getElementById("training-certificates")
+                              ?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Professional Licenses or Certifications:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="professional-licenses"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            multiple
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('professional-licenses')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        Professional Licenses or Certifications:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="professional-licenses"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          multiple
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document
+                              .getElementById("professional-licenses")
+                              ?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Social Security System (SSS) Number:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="sss-number"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('sss-number')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        Social Security System (SSS) Number:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="sss-number"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document.getElementById("sss-number")?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">PhilHealth Number:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="philhealth-number"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('philhealth-number')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">
+                        PhilHealth Number:
+                      </div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="philhealth-number"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document
+                              .getElementById("philhealth-number")
+                              ?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">BIR TIN Number:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="bir-tin"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('bir-tin')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">BIR TIN Number:</div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="bir-tin"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document.getElementById("bir-tin")?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">Pag-IBIG Number:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="pag-ibig"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('pag-ibig')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">Pag-IBIG Number:</div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="pag-ibig"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document.getElementById("pag-ibig")?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
 
-      <div className="requirement-item">
-        <div className="requirement-label">NBI Clearance:</div>
-        <div className="requirement-control">
-          <input 
-            type="file" 
-            id="nbi-clearance"
-            className="file-input"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-          />
-          <Button 
-            type="default" 
-            className="browse-button"
-            onClick={() => document.getElementById('nbi-clearance')?.click()}
-          >
-            Select File
-          </Button>
-        </div>
-      </div>
-    </div>
+                    <div className="requirement-item">
+                      <div className="requirement-label">NBI Clearance:</div>
+                      <div className="requirement-control">
+                        <input
+                          type="file"
+                          id="nbi-clearance"
+                          className="file-input"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        />
+                        <Button
+                          type="default"
+                          className="browse-button"
+                          onClick={() =>
+                            document.getElementById("nbi-clearance")?.click()
+                          }
+                        >
+                          Select File
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
 
-    <div className="requirements-actions">
-      <Button type="primary" className="submit-requirements">
-        Submit All Requirements
-      </Button>
-    </div>
-  </div>
-</TabPane>
+                  <div className="requirements-actions">
+                    <Button type="primary" className="submit-requirements">
+                      Submit All Requirements
+                    </Button>
+                  </div>
+                </div>
+              </TabPane>
               <TabPane tab="Family Data" key="5">
-                        <div className="horizontal-details-container">
-                          <div className="horizontal-details-grid">
-                            <div className="detail-row">
-                              <span className="detail-label">Family Member Name:</span>
-                              <span className="detail-value">
-                                {selectedEmployeeDetails.memberFirstName && selectedEmployeeDetails.memberLastName ?
-                                  `${selectedEmployeeDetails.memberFirstName} ${selectedEmployeeDetails.memberLastName}` : 
-                                  'N/A'}
-                              </span>
-                            </div>
-                            <div className="detail-row">
-                              <span className="detail-label">Gender:</span>
-                              <span className="detail-value">
-                                {selectedEmployeeDetails.memberGender || 'N/A'}
-                              </span>
-                            </div>
-                            <div className="detail-row">
-                              <span className="detail-label">Phone Number:</span>
-                              <span className="detail-value">
-                                {selectedEmployeeDetails.memberPhoneNumber ? (
-                                  <a href={`tel:${selectedEmployeeDetails.memberPhoneNumber}`}>
-                                    {selectedEmployeeDetails.memberPhoneNumber}
-                                  </a>
-                                ) : 'N/A'}
-                              </span>
-                            </div>
-                            <div className="detail-row">
-                              <span className="detail-label">Address:</span>
-                              <span className="detail-value">
-                                {selectedEmployeeDetails.memberAddress || 'N/A'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {!selectedEmployeeDetails.memberFirstName && (
-                          <div style={{ textAlign: 'center', marginTop: '20px', color: '#999' }}>
-                            <p>No family member information available.</p>
-                          </div>
+                <div className="horizontal-details-container">
+                  <div className="horizontal-details-grid">
+                    <div className="detail-row">
+                      <span className="detail-label">Family Member Name:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.memberFirstName &&
+                        selectedEmployeeDetails.memberLastName
+                          ? `${selectedEmployeeDetails.memberFirstName} ${selectedEmployeeDetails.memberLastName}`
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Gender:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.memberGender || "N/A"}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Phone Number:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.memberPhoneNumber ? (
+                          <a
+                            href={`tel:${selectedEmployeeDetails.memberPhoneNumber}`}
+                          >
+                            {selectedEmployeeDetails.memberPhoneNumber}
+                          </a>
+                        ) : (
+                          "N/A"
                         )}
-                      </TabPane>
-             <TabPane tab="Salary Adjustment" key="6">
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Address:</span>
+                      <span className="detail-value">
+                        {selectedEmployeeDetails.memberAddress || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {!selectedEmployeeDetails.memberFirstName && (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      marginTop: "20px",
+                      color: "#999",
+                    }}
+                  >
+                    <p>No family member information available.</p>
+                  </div>
+                )}
+              </TabPane>
+              <TabPane tab="Salary Adjustment" key="6">
                 <div className="salary-adjustment-container">
                   <div className="salary-section">
                     <div className="salary-header">
@@ -1712,7 +1909,9 @@ const FacultyPage: React.FC = () => {
                           label="Current Salary"
                           name="currentSalary"
                           className="form-item"
-                          rules={[{ required: true, message: 'Please enter amount' }]}
+                          rules={[
+                            { required: true, message: "Please enter amount" },
+                          ]}
                         >
                           <Input prefix="₱" type="number" placeholder="0.00" />
                         </Form.Item>
@@ -1742,7 +1941,9 @@ const FacultyPage: React.FC = () => {
                           label="Amount"
                           name="adjustmentAmount"
                           className="form-item"
-                          rules={[{ required: true, message: 'Please enter amount' }]}
+                          rules={[
+                            { required: true, message: "Please enter amount" },
+                          ]}
                         >
                           <Input prefix="₱" type="number" placeholder="0.00" />
                         </Form.Item>
@@ -1751,9 +1952,14 @@ const FacultyPage: React.FC = () => {
                           label="Effective Date"
                           name="effectiveDate"
                           className="form-item"
-                          rules={[{ required: true, message: 'Please select effective date' }]}
+                          rules={[
+                            {
+                              required: true,
+                              message: "Please select effective date",
+                            },
+                          ]}
                         >
-                          <DatePicker style={{ width: '100%' }} />
+                          <DatePicker style={{ width: "100%" }} />
                         </Form.Item>
                       </div>
 
@@ -1762,17 +1968,18 @@ const FacultyPage: React.FC = () => {
                         name="adjustmentReason"
                         className="form-item-full"
                       >
-                        <Input.TextArea 
-                          rows={3} 
+                        <Input.TextArea
+                          rows={3}
                           placeholder="Enter reason for salary adjustment..."
                         />
                       </Form.Item>
-
-                      
                     </div>
 
                     <div className="salary-actions">
-                      <Button type="primary" className="submit-salary-adjustment">
+                      <Button
+                        type="primary"
+                        className="submit-salary-adjustment"
+                      >
                         Submit Salary Adjustment
                       </Button>
                     </div>

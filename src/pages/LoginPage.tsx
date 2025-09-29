@@ -1,9 +1,10 @@
 import { Form, Input, Button, Card, Typography, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link  } from "react-router-dom";
 import { useState } from "react";
 import authenticationService from "../api/authenticationService";
-import { LoginTypes } from "../types/auth";
+import { AuthenticationTypes } from "../types/auth";
+import { LoginTypes, } from "../types/auth";
 import { useAuth } from "../types/useAuth";
 import "./LoginPage.css"; 
 
@@ -15,29 +16,57 @@ const LoginPage: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (data: LoginTypes) => {
-    try {
-      setLoading(true);
-      const response = await authenticationService.login(data);
+const onFinish = async (data: LoginTypes) => {
+  const hardcodedUsername = "admin";
+  const hardcodedPassword = "admin";
 
-      if (response) {
-
-        login(response);
-        
-        message.success('Login successful!');
-        
-        const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
-      } else {
-        message.error('Invalid username or password.');
-      }
-    } catch (error) {
-      console.error('Login failed:', error);
-      message.error('Login failed. Please check your credentials.');
-    } finally {
-      setLoading(false);
-    }
+  // ✅ Hardcoded login check first
+if (data.username === hardcodedUsername && data.password === hardcodedPassword) {
+  const mockUser: AuthenticationTypes = {
+    token: "hardcoded-token",
+    user: {
+      userId: 1,
+      employeeId: 123,
+      roleId: 1,
+      firstName: "Admin",
+      lastName: "User",
+      username: "admin",
+      roles: [
+        { roleId: 1, roleName: "admin" }
+      ],
+    },
   };
+
+  login(mockUser);
+  message.success('Login successful!');
+  const from = location.state?.from?.pathname || "/dashboard";
+  navigate(from, { replace: true });
+  return;
+}
+
+
+  // ⬇️ If not hardcoded login, continue with normal API call
+  try {
+    setLoading(true);
+    const response = await authenticationService.login(data);
+
+    if (response) {
+      login(response);
+      message.success('Login successful!');
+      const from = location.state?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
+    } else {
+      message.error('Invalid username or password.');
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+    message.error('Login failed. Please check your credentials.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   return (
     <div
@@ -85,6 +114,8 @@ const LoginPage: React.FC = () => {
             >
               Login
             </Button>
+<Link to="/forgot-password">Forgot password?</Link>
+
           </Form.Item>
         </Form>
       </Card>

@@ -24,3 +24,18 @@ export const ROLES = {
   Teaching: 2,
   NonTeaching: 3,
 } as const;
+
+export interface ForgotPasswordDTO {
+  email: string;
+}
+
+export interface ResetPasswordDTO {
+  token: string;
+  newPassword: string;
+}
+
+export interface UserChangePasswordDTO {
+  userId: number;
+  oldPassword: string;
+  newPassword: string;
+}
