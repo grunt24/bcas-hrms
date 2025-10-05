@@ -15,6 +15,9 @@ import ProtectedRoute from "./context/ProtectedRoute.tsx";
 import { ROLES } from "./types/auth";
 import ForgotPasswordPage from "./pages/ForgotPassword.tsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.tsx";
+import FileUpload from "./pages/FileUpload.tsx";
+import EvaluationFormPage from "./pages/EvaluationFormPage.tsx";
+import EvaluatedPage from "./pages/EvaluatedPage.tsx";
 
 function App() {
   return (
@@ -91,6 +94,32 @@ function App() {
                 <SettingsPage />
               </ProtectedRoute>
             } 
+          />        
+          <Route 
+            path="/evaluationForm" 
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.Admin]}>
+                <EvaluationFormPage />
+              </ProtectedRoute>
+            } 
+          />       
+          <Route 
+            path="/evaluatedPage" 
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.Admin]}>
+                <EvaluatedPage />
+              </ProtectedRoute>
+            } 
+          />    
+          <Route
+            path="/files"
+            element={
+              <ProtectedRoute
+                allowedRoles={[ROLES.Admin, ROLES.Teaching, ROLES.NonTeaching]}
+              >
+                <FileUpload />
+              </ProtectedRoute>
+            }
           />
         </Route>
       </Routes>

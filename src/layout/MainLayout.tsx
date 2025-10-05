@@ -105,6 +105,16 @@ const MainLayout = () => {
         icon: <EditOutlined />,
         label: "Evaluations",
       },
+                {
+    key: "evaluationForm",
+    icon: <FolderOutlined />,
+    label: "Evaluation Form",
+  },
+            {
+    key: "evaluatedPage",
+    icon: <FolderOutlined />,
+    label: "Evaluated Employees",
+  },
     ];
 
     const commonItems = [
@@ -112,7 +122,14 @@ const MainLayout = () => {
         key: "contracts",
         icon: <FolderOutlined />,
         label: "Contracts",
-      }
+      },
+        {
+    key: "files",
+    icon: <FolderOutlined />,
+    label: "Documents",
+  },
+
+  
     ];
 
     const logoutItem = {

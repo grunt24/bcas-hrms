@@ -38,6 +38,7 @@ import { PositionTypes } from "../types/tblPosition";
 import PositionService from "../api/PositionService";
 import { useAuth } from "../types/useAuth";
 import { ROLES } from "../types/auth";
+import Requirements from "./Requirements";
 
 const { Option } = Select;
 const { useBreakpoint } = Grid;
@@ -157,34 +158,43 @@ const FacultyPage: React.FC = () => {
   const isAdmin = user?.roleId === ROLES.Admin;
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const formatEmployeeId = (
-    employeeId: number | string | undefined,
-    hireDate?: string | Date
-  ): string => {
-    if (!employeeId) return "N/A";
+const formatEmployeeId = (
+  employeeId: number | string | undefined,
+  hireDate?: string | Date
+): string => {
+  if (!employeeId) return "N/A";
 
-    if (typeof employeeId === "string" && employeeId.includes("-")) {
-      return employeeId;
+  if (typeof employeeId === "string" && employeeId.includes("-")) {
+    return employeeId;
+  }
+
+  const idNumber =
+    typeof employeeId === "string" ? parseInt(employeeId) : employeeId;
+
+  if (!hireDate) {
+    console.warn(`⚠️ Missing hireDate for employee ID ${idNumber}`);
+  }
+
+  const year = hireDate ? moment(hireDate).year() : new Date().getFullYear();
+  const formattedId = idNumber.toString().padStart(3, "0");
+  return `${year}-${formattedId}`;
+};
+
+
+const getEnhancedFacultyData = () => {
+  return facultyData.map((employee) => {
+    const isValidHireDate = employee.hireDate && moment(employee.hireDate).isValid();
+
+    // Optional: Log bad data during development
+    if (!isValidHireDate) {
+      console.warn(`⚠️ Invalid or missing hireDate for employeeID ${employee.employeeID}`);
     }
 
-    const idNumber =
-      typeof employeeId === "string" ? parseInt(employeeId) : employeeId;
-
-    let year: number;
-    if (hireDate) {
-      year = moment(hireDate).year();
-    } else {
-      year = new Date().getFullYear();
-    }
-
-    const formattedId = idNumber.toString().padStart(3, "0");
-    return `${year}-${formattedId}`;
-  };
-
-  const getEnhancedFacultyData = () => {
-    return facultyData.map((employee) => ({
+    return {
       ...employee,
-      formattedId: formatEmployeeId(employee.employeeID, employee.hireDate),
+      formattedId: isValidHireDate
+        ? formatEmployeeId(employee.employeeID, employee.hireDate)
+        : "Invalid-Date", // Or "N/A", or skip this field entirely
       departmentName:
         departments.find((d) => d.departmentID === employee.departmentID)
           ?.departmentName || "N/A",
@@ -192,8 +202,10 @@ const FacultyPage: React.FC = () => {
         positions.find((p) => p.positionID === employee.positionID)
           ?.positionName || "N/A",
       gender: employee.gender || "N/A",
-    }));
-  };
+    };
+  });
+};
+
 
   const handlePrint = (category?: string, categoryValue?: string) => {
     const enhancedData = getEnhancedFacultyData();
@@ -516,7 +528,7 @@ const FacultyPage: React.FC = () => {
       departmentID: record.departmentID ? Number(record.departmentID) : null,
       positionID: record.positionID ? Number(record.positionID) : null,
       employmentStatus: record.employmentStatus || "Hired",
-      hireDate: record.hireDate ? moment(record.hireDate) : moment(),
+      hireDate: record.hireDate ? moment(record.hireDate) : null,
 
       // Family member fields
       memberFirstName: record.memberFirstName,
@@ -570,12 +582,15 @@ const FacultyPage: React.FC = () => {
 
       const formattedValues = {
         ...values,
-        dateOfBirth: values.dateOfBirth
-          ? moment(values.dateOfBirth).format("YYYY-MM-DD")
-          : null,
-        hireDate: values.hireDate
-          ? moment(values.hireDate).format("YYYY-MM-DD")
-          : moment().format("YYYY-MM-DD"),
+  dateOfBirth: values.dateOfBirth
+    ? moment(values.dateOfBirth).format("YYYY-MM-DD")
+    : undefined,
+  hireDate: values.hireDate
+    ? moment(values.hireDate).format("YYYY-MM-DD")
+    : undefined,
+            
+
+          // : moment().format("YYYY-MM-DD"),
         departmentID: Number(values.departmentID),
         positionID: Number(values.positionID),
         yearGraduated: values.yearGraduated
@@ -1105,7 +1120,7 @@ const FacultyPage: React.FC = () => {
               <Form.Item
                 name="hireDate"
                 label="Hire Date"
-                initialValue={moment()}
+                // initialValue={moment()}
                 className="form-item"
                 rules={[
                   { required: isAdmin, message: "Please select hire date" },
@@ -1572,279 +1587,10 @@ const FacultyPage: React.FC = () => {
                   </div>
                 )}
               </TabPane>
+              {/* <Requirements/> */}
               <TabPane tab="Requirements | Records" key="4">
-                <div className="requirements-container">
-                  <div className="requirement-section">
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        PSA Birth Certificate:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="psa-birth-certificate"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document
-                              .getElementById("psa-birth-certificate")
-                              ?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
+<Requirements employeeId={selectedEmployeeDetails?.employeeID ?? null} />
 
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        Marriage Certificate:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="marriage-certificate"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document
-                              .getElementById("marriage-certificate")
-                              ?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        Passport-Sized Photographs:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="passport-photos"
-                          className="file-input"
-                          accept=".jpg,.jpeg,.png"
-                          multiple
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document.getElementById("passport-photos")?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        Educational and Professional Credentials:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="educational-credentials"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          multiple
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document
-                              .getElementById("educational-credentials")
-                              ?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        Training Certificates:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="training-certificates"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          multiple
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document
-                              .getElementById("training-certificates")
-                              ?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        Professional Licenses or Certifications:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="professional-licenses"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          multiple
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document
-                              .getElementById("professional-licenses")
-                              ?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        Social Security System (SSS) Number:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="sss-number"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document.getElementById("sss-number")?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">
-                        PhilHealth Number:
-                      </div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="philhealth-number"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document
-                              .getElementById("philhealth-number")
-                              ?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">BIR TIN Number:</div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="bir-tin"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document.getElementById("bir-tin")?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">Pag-IBIG Number:</div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="pag-ibig"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document.getElementById("pag-ibig")?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="requirement-item">
-                      <div className="requirement-label">NBI Clearance:</div>
-                      <div className="requirement-control">
-                        <input
-                          type="file"
-                          id="nbi-clearance"
-                          className="file-input"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        />
-                        <Button
-                          type="default"
-                          className="browse-button"
-                          onClick={() =>
-                            document.getElementById("nbi-clearance")?.click()
-                          }
-                        >
-                          Select File
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="requirements-actions">
-                    <Button type="primary" className="submit-requirements">
-                      Submit All Requirements
-                    </Button>
-                  </div>
-                </div>
               </TabPane>
               <TabPane tab="Family Data" key="5">
                 <div className="horizontal-details-container">
